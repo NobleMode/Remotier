@@ -1,0 +1,14 @@
+﻿<Window x:Class="Remotier.RemoteViewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Remote View" Height="600" Width="800"
+        WindowState="Maximized"
+        KeyDown="Window_KeyDown" KeyUp="Window_KeyUp">
+    <Grid>
+        <Image x:Name="ScreenImage" Stretch="Uniform" 
+               MouseMove="ScreenImage_MouseMove" 
+               MouseDown="ScreenImage_MouseDown" 
+               MouseUp="ScreenImage_MouseUp"
+               MouseWheel="ScreenImage_MouseWheel"/>
+    </Grid>
+</Window>
