@@ -8,10 +8,10 @@ public class TcpControlClient : IDisposable // Renamed to avoid name clash with 
     private TcpClient _client = null!;
     private NetworkStream _stream = null!;
 
-    public void Connect(string ip, int port)
+    public async Task ConnectAsync(string ip, int port)
     {
         _client = new TcpClient();
-        _client.Connect(ip, port);
+        await _client.ConnectAsync(ip, port);
         _stream = _client.GetStream();
     }
 

@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Remotier.Models;
 using Remotier.Services.Network;
+using System.Net;
+using System.Net.Sockets;
 
 namespace Remotier.Services;
 
@@ -25,18 +27,10 @@ public class HostService : IDisposable
         _compressionService = new CompressionService(options.Quality);
 
         _streamSender = new UdpStreamSender();
-        // NOTE: We don't know Client IP yet for UDP until they tell us or we wait for a handshake.
-        // Current architecture guide said "Host shows code/IP" and "ConnectWindow user enters IP".
-        // Usually, Client Sends to Host UDP first to punch hole or Register, OR Host sends to Client.
-        // If Host Sends to Client, Host needs Client IP.
-        // TCP Host accepts connection, so we can get Client IP from TCP connection!
 
         _tcpHost = new TcpHost();
         _tcpHost.OnControlReceived += OnControlPacket;
         _tcpHost.Start(port);
-
-        // Listen for new clients on TCP to set UDP target
-        // For simplicity, we might just assume one client for now or handle it in OnControlReceived "Connect" packet
 
         _inputService = new InputService();
         _isHosting = true;
@@ -44,21 +38,17 @@ public class HostService : IDisposable
         _captureTask = Task.Run(CaptureLoop);
     }
 
-    private void OnControlPacket(ControlPacket packet)
+    private void OnControlPacket(ControlPacket packet, TcpClient client)
     {
         if (packet.Type == PacketType.Connect)
         {
-            // Client sent a Hello packet. In a real app we'd need the IP from the TCP client socket.
-            // But ControlPacket doesn't carry IP.
-            // We need a way to link the TCP client to the UDP target.
-            // For now, let's assume the UI/User flows allow us to know, or we modify logic.
-
-            // HACK: We can ask the user to enter Client IP? No, Client connects to Host. 
-            // So Host knows Client IP from the socket.
-            // But TcpHost manages sockets. 
-            // Let's defer "Connecting UDP" until we have a mechanism. 
-
-            // ALTERNATIVE: TcpHost triggers an event "ClientConnected" with IP.
+            if (client.Client.RemoteEndPoint is IPEndPoint remoteIp)
+            {
+                // Use the port sent in Data, or default to 5000 if 0
+                int targetPort = packet.Data > 0 ? packet.Data : 5000;
+                Debug.WriteLine($"Client Connected from {remoteIp.Address}:{targetPort}");
+                _streamSender.Connect(remoteIp.Address.ToString(), targetPort);
+            }
         }
         else if (packet.Type == PacketType.Mouse || packet.Type == PacketType.Keyboard)
         {

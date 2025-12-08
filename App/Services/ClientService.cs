@@ -13,7 +13,7 @@ public class ClientService : IDisposable
 
     public event Action<BitmapImage> OnFrameReady;
 
-    public void Connect(string ip, int port)
+    public async Task ConnectAsync(string ip, int port)
     {
         _receiver = new UdpStreamReceiver();
         _receiver.OnFrameReceived += OnFrameReceived;
@@ -22,10 +22,10 @@ public class ClientService : IDisposable
                                // But Host needs to know to send to this 'port'.
 
         _tcpClient = new TcpControlClient();
-        _tcpClient.Connect(ip, port);
+        await _tcpClient.ConnectAsync(ip, port);
 
         // Send Connect Packet
-        var packet = new ControlPacket { Type = PacketType.Connect };
+        var packet = new ControlPacket { Type = PacketType.Connect, Data = port };
         _tcpClient.SendControl(packet);
     }
 

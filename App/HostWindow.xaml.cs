@@ -22,9 +22,17 @@ public partial class HostWindow : Window
         string localIP = GetLocalIPAddress();
         IpText.Text = $"IP: {localIP} (Port: 5000)";
 
-        _hostService = new HostService();
-        _hostService.Start(5000, new StreamOptions());
-        StatusText.Text = "Service Started.";
+        try
+        {
+            _hostService = new HostService();
+            _hostService.Start(5000, new StreamOptions());
+            StatusText.Text = "Service Started.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to start host: {ex.Message}\n{ex.StackTrace}", "Host Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            StatusText.Text = "Failed to start.";
+        }
     }
 
     private void Stop_Click(object sender, RoutedEventArgs e)

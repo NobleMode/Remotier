@@ -20,11 +20,19 @@ public partial class RemoteViewWindow : Window
         Closing += RemoteViewWindow_Closing;
     }
 
-    private void RemoteViewWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void RemoteViewWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _clientService = new ClientService();
         _clientService.OnFrameReady += (img) => Dispatcher.Invoke(() => ScreenImage.Source = img);
-        _clientService.Connect(_info.IP, _info.Port);
+        try
+        {
+            await _clientService.ConnectAsync(_info.IP, _info.Port);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Connection failed: {ex.Message}\nCheck IP and Firewall on Host.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Close();
+        }
     }
 
     private void RemoteViewWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)

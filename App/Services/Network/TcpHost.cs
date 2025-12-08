@@ -14,7 +14,7 @@ public class TcpHost : IDisposable
     private List<TcpClient> _clients = new();
     private bool _isRunning;
 
-    public event Action<ControlPacket> OnControlReceived = delegate { };
+    public event Action<ControlPacket, TcpClient> OnControlReceived = delegate { };
 
     public async void Start(int port)
     {
@@ -63,7 +63,7 @@ public class TcpHost : IDisposable
                                 packet = *(ControlPacket*)pBuffer;
                             }
                         }
-                        OnControlReceived?.Invoke(packet);
+                        OnControlReceived?.Invoke(packet, client);
                     }
                 }
                 catch (Exception ex)
