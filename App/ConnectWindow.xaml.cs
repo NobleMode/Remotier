@@ -31,7 +31,8 @@ public partial class ConnectWindow : Window
         }
 
         var remoteView = new RemoteViewWindow(new ConnectionInfo { IP = ip, Port = port });
+        remoteView.Closed += (s, args) => this.Close(); // Close ConnectWindow when RemoteView closes
         remoteView.Show();
-        Close();
+        this.Hide(); // Hide ConnectWindow instead of Closing immediately
     }
 }

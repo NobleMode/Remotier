@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Media.Imaging;
+using System.Threading.Tasks;
 using Remotier.Services.Network;
 using Remotier.Services.Utils;
 
@@ -17,9 +18,7 @@ public class ClientService : IDisposable
     {
         _receiver = new UdpStreamReceiver();
         _receiver.OnFrameReceived += OnFrameReceived;
-        _receiver.Start(port); // Listen on same port? Or dynamic? 
-                               // Host sends to Client Port. Client needs to listen on 'port'. 
-                               // But Host needs to know to send to this 'port'.
+        _receiver.Start(port);
 
         _tcpClient = new TcpControlClient();
         await _tcpClient.ConnectAsync(ip, port);
@@ -36,13 +35,12 @@ public class ClientService : IDisposable
         if (bitmap != null)
         {
             // Convert System.Drawing.Bitmap to WPF BitmapImage
-            // This needs to happen on UI thread or return suitable type
-            // We'll return logic to convert in ViewModel/UI to avoid threading hell here if possible
-            // OR we do memory stream conversion here
-
             var image = ScreenUtils.BitmapToImageSource(bitmap);
-            image.Freeze(); // Make it cross-thread accessible
-            OnFrameReady?.Invoke(image);
+            if (image != null)
+            {
+                image.Freeze(); // Make it cross-thread accessible
+                OnFrameReady?.Invoke(image);
+            }
         }
     }
 

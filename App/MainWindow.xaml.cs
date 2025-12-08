@@ -12,14 +12,16 @@ public partial class MainWindow : Window
     private void Host_Click(object sender, RoutedEventArgs e)
     {
         var hostWindow = new HostWindow();
+        hostWindow.Closed += (s, args) => this.Show();
         hostWindow.Show();
-        // this.Close(); // Keep main window open?
+        this.Hide();
     }
 
     private void Connect_Click(object sender, RoutedEventArgs e)
     {
         var connectWindow = new ConnectWindow();
+        connectWindow.Closed += (s, args) => this.Show();
         connectWindow.Show();
-        // this.Close();
+        this.Hide();
     }
 }

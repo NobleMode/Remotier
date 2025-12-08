@@ -25,7 +25,13 @@ public partial class HostWindow : Window
         try
         {
             _hostService = new HostService();
-            _hostService.Start(5000, new StreamOptions());
+            _hostService.Start(5000, new StreamOptions
+            {
+                Quality = 40,
+                EnableScaling = true,
+                ScaleWidth = 1280,
+                ScaleHeight = 720
+            });
             StatusText.Text = "Service Started.";
         }
         catch (Exception ex)

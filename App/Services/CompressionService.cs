@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using Remotier.Models;
 
 namespace Remotier.Services;
 
@@ -8,12 +9,19 @@ public class CompressionService
 {
     private ImageCodecInfo _jpegEncoder;
     private EncoderParameters _encoderParams;
+    private bool _enableScaling;
+    private int _scaleWidth;
+    private int _scaleHeight;
 
-    public CompressionService(long quality)
+    public CompressionService(StreamOptions options)
     {
         _jpegEncoder = GetEncoder(ImageFormat.Jpeg);
         _encoderParams = new EncoderParameters(1);
-        _encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, quality);
+        _encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, (long)options.Quality);
+
+        _enableScaling = options.EnableScaling;
+        _scaleWidth = options.ScaleWidth;
+        _scaleHeight = options.ScaleHeight;
     }
 
     public void SetQuality(long quality)
@@ -27,7 +35,17 @@ public class CompressionService
 
         using (var ms = new MemoryStream())
         {
-            bitmap.Save(ms, _jpegEncoder, _encoderParams);
+            if (_enableScaling)
+            {
+                using (var resized = new Bitmap(bitmap, new Size(_scaleWidth, _scaleHeight)))
+                {
+                    resized.Save(ms, _jpegEncoder, _encoderParams);
+                }
+            }
+            else
+            {
+                bitmap.Save(ms, _jpegEncoder, _encoderParams);
+            }
             return ms.ToArray();
         }
     }
@@ -42,7 +60,7 @@ public class CompressionService
                 return codec;
             }
         }
-        return null;
+        return null; // Should handle this better
     }
 
     public static Bitmap Decompress(byte[] data)
@@ -51,7 +69,10 @@ public class CompressionService
 
         using (var ms = new MemoryStream(data))
         {
-            return new Bitmap(ms);
+            using (var temp = new Bitmap(ms))
+            {
+                return new Bitmap(temp);
+            }
         }
     }
 }

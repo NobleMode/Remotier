@@ -36,16 +36,28 @@ public class CaptureService : IDisposable
 
     public Bitmap CaptureFrame()
     {
+        bool frameAcquired = false;
         try
         {
             var result = _duplication.AcquireNextFrame(100, out var frameInfo, out var desktopResource);
             if (result.Failure)
             {
-                if (result.Code == Vortice.DXGI.ResultCode.WaitTimeout) return null; // No update
+                // Timeout is normal, other failures mean something is wrong
+                return null;
+            }
+
+            frameAcquired = true;
+
+            if (desktopResource == null)
+            {
                 return null;
             }
 
             using var texture = desktopResource.QueryInterface<ID3D11Texture2D>();
+            if (texture == null)
+            {
+                return null;
+            }
 
             // Create staging texture if needed
             if (_stagingTexture == null)
@@ -58,40 +70,56 @@ public class CaptureService : IDisposable
                 _stagingTexture = _device.CreateTexture2D(desc);
             }
 
+            if (_stagingTexture == null) return null;
+
             _context.CopyResource(_stagingTexture, texture);
+
+            // Release frame immediately after copy to allow next frame to be ready
             _duplication.ReleaseFrame();
+            frameAcquired = false;
 
             var map = _context.Map(_stagingTexture, 0, MapMode.Read, Vortice.Direct3D11.MapFlags.None);
 
-            // Create bitmap from map.Data
-            var bitmap = new Bitmap(ScreenWidth, ScreenHeight, PixelFormat.Format32bppArgb);
-            var bounds = new Rectangle(0, 0, ScreenWidth, ScreenHeight);
-            var mapData = bitmap.LockBits(bounds, ImageLockMode.WriteOnly, bitmap.PixelFormat);
-
-            // Copy line by line
-            unsafe
+            try
             {
-                byte* source = (byte*)map.DataPointer;
-                byte* dest = (byte*)mapData.Scan0;
-                for (int y = 0; y < ScreenHeight; y++)
+                // Create bitmap from map.Data
+                var bitmap = new Bitmap(ScreenWidth, ScreenHeight, PixelFormat.Format32bppArgb);
+                var bounds = new Rectangle(0, 0, ScreenWidth, ScreenHeight);
+                var mapData = bitmap.LockBits(bounds, ImageLockMode.WriteOnly, bitmap.PixelFormat);
+
+                // Copy line by line
+                unsafe
                 {
-                    // Unsafe copy
-                    Buffer.MemoryCopy(source, dest, mapData.Stride, ScreenWidth * 4);
-                    source += map.RowPitch;
-                    dest += mapData.Stride;
+                    byte* source = (byte*)map.DataPointer;
+                    byte* dest = (byte*)mapData.Scan0;
+                    for (int y = 0; y < ScreenHeight; y++)
+                    {
+                        Buffer.MemoryCopy(source, dest, mapData.Stride, ScreenWidth * 4);
+                        source += map.RowPitch;
+                        dest += mapData.Stride;
+                    }
                 }
+
+                bitmap.UnlockBits(mapData);
+                return bitmap;
             }
-
-            bitmap.UnlockBits(mapData);
-            _context.Unmap(_stagingTexture, 0);
-
-            return bitmap;
+            finally
+            {
+                _context.Unmap(_stagingTexture, 0);
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Handle lost device or other errors
-            try { _duplication.ReleaseFrame(); } catch { }
+            // Log if needed
+            // Debug.WriteLine(ex);
             return null;
+        }
+        finally
+        {
+            if (frameAcquired)
+            {
+                try { _duplication.ReleaseFrame(); } catch { }
+            }
         }
     }
 

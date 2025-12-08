@@ -20,13 +20,30 @@ public partial class RemoteViewWindow : Window
         Closing += RemoteViewWindow_Closing;
     }
 
+    private int _frameCount = 0;
+    private DateTime _lastUpdate = DateTime.Now;
+
     private async void RemoteViewWindow_Loaded(object sender, RoutedEventArgs e)
     {
+        DebugInfo.Text = $"Connecting to {_info.IP}:{_info.Port}...";
         _clientService = new ClientService();
-        _clientService.OnFrameReady += (img) => Dispatcher.Invoke(() => ScreenImage.Source = img);
+
+        _clientService.OnFrameReady += (img) => Dispatcher.Invoke(() =>
+        {
+            ScreenImage.Source = img;
+            _frameCount++;
+            if ((DateTime.Now - _lastUpdate).TotalSeconds >= 1)
+            {
+                DebugInfo.Text = $"Connected to {_info.IP}\nFPS: {_frameCount}\nResolution: {img.PixelWidth}x{img.PixelHeight}";
+                _frameCount = 0;
+                _lastUpdate = DateTime.Now;
+            }
+        });
+
         try
         {
             await _clientService.ConnectAsync(_info.IP, _info.Port);
+            DebugInfo.Text = $"Handshake Sent. Waiting for video...";
         }
         catch (Exception ex)
         {
