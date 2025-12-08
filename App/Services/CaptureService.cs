@@ -18,20 +18,39 @@ public class CaptureService : IDisposable
     public int ScreenWidth { get; private set; }
     public int ScreenHeight { get; private set; }
 
-    public void Initialize()
+    public void Initialize(int monitorIndex = 0)
     {
         D3D11CreateDevice(null, DriverType.Hardware, DeviceCreationFlags.VideoSupport,
             new[] { FeatureLevel.Level_11_0 }, out _device, out _context);
 
         using var factory = CreateDXGIFactory1<IDXGIFactory1>();
         factory.EnumAdapters1(0, out var adapter);
-        adapter.EnumOutputs(0, out var output);
+
+        if (adapter.EnumOutputs(monitorIndex, out var output).Failure)
+        {
+            // Fallback to 0 if invalid index
+            adapter.EnumOutputs(0, out output);
+        }
+
         using var output1 = output.QueryInterface<IDXGIOutput1>();
 
         ScreenWidth = output.Description.DesktopCoordinates.Right - output.Description.DesktopCoordinates.Left;
         ScreenHeight = output.Description.DesktopCoordinates.Bottom - output.Description.DesktopCoordinates.Top;
 
         _duplication = output1.DuplicateOutput(_device);
+    }
+
+    public static int GetMonitorCount()
+    {
+        using var factory = CreateDXGIFactory1<IDXGIFactory1>();
+        factory.EnumAdapters1(0, out var adapter);
+        int count = 0;
+        while (adapter.EnumOutputs(count, out var output).Success)
+        {
+            output.Dispose();
+            count++;
+        }
+        return count;
     }
 
     public Bitmap CaptureFrame()

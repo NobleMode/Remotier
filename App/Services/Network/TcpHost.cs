@@ -14,6 +14,8 @@ public class TcpHost : IDisposable
     private List<TcpClient> _clients = new();
     private bool _isRunning;
 
+    public event Action<TcpClient> ClientConnected = delegate { };
+    public event Action<TcpClient> ClientDisconnected = delegate { };
     public event Action<ControlPacket, TcpClient> OnControlReceived = delegate { };
 
     public async void Start(int port)
@@ -22,7 +24,7 @@ public class TcpHost : IDisposable
         _listener.Start();
         _isRunning = true;
 
-        Debug.WriteLine($"TCP Host started on port {port}");
+        System.Diagnostics.Debug.WriteLine($"TCP Host started on port {port}");
 
         while (_isRunning)
         {
@@ -34,13 +36,14 @@ public class TcpHost : IDisposable
             }
             catch (Exception ex)
             {
-                if (_isRunning) Debug.WriteLine($"Accept Error: {ex.Message}");
+                if (_isRunning) System.Diagnostics.Debug.WriteLine($"Accept Error: {ex.Message}");
             }
         }
     }
 
     private async Task HandleClient(TcpClient client)
     {
+        ClientConnected?.Invoke(client);
         using (client)
         using (var stream = client.GetStream())
         {
@@ -74,6 +77,7 @@ public class TcpHost : IDisposable
             }
         }
         _clients.Remove(client);
+        ClientDisconnected?.Invoke(client);
     }
 
     public void Stop()

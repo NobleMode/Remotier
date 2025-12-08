@@ -29,6 +29,13 @@ public class CompressionService
         _encoderParams.Param[0] = new EncoderParameter(Encoder.Quality, quality);
     }
 
+    public void SetScaling(bool enable, int width, int height)
+    {
+        _enableScaling = enable;
+        _scaleWidth = width;
+        _scaleHeight = height;
+    }
+
     public byte[] Compress(Bitmap bitmap)
     {
         if (bitmap == null) return null;

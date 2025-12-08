@@ -1,18 +1,42 @@
 ﻿<Window x:Class="Remotier.RemoteViewWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Remote View" Height="600" Width="800"
+        Title="Remotier Viewer" Height="720" Width="1280"
         WindowState="Normal"
-        KeyDown="Window_KeyDown" KeyUp="Window_KeyUp">
+        WindowStyle="SingleBorderWindow"
+        Background="Black"
+        KeyDown="Window_KeyDown" KeyUp="Window_KeyUp"
+        SizeChanged="RemoteViewWindow_SizeChanged">
     <Grid>
         <Image x:Name="ScreenImage" Stretch="Uniform" 
                MouseMove="ScreenImage_MouseMove" 
                MouseDown="ScreenImage_MouseDown" 
                MouseUp="ScreenImage_MouseUp"
                MouseWheel="ScreenImage_MouseWheel"/>
+        
+        <!-- Overlay (Top HUD) -->
+        <Grid VerticalAlignment="Top" Background="#CC000000" Height="40">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Stats -->
+            <TextBlock x:Name="StatsText" Text="FPS: 0 | Latency: 0ms" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0"/>
+
+            <!-- Controls -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,10,0">
+                <Button Content="Fullscreen" Click="ToggleFullscreen_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White" x:Name="FullscreenBtn"/>
+                <Button Content="Toggle Input" Click="ToggleInput_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White"/>
+                <Button Content="Disconnect" Click="Disconnect_Click" Width="100" Margin="0,5,0,5" Background="#CC3333" Foreground="White"/>
+            </StackPanel>
+        </Grid>
+        
+        <!-- Debug/Notification Text -->
         <TextBlock x:Name="DebugInfo" Text="Initializing..." 
-                   Foreground="Red" FontSize="16" FontWeight="Bold" 
-                   HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10" 
-                   IsHitTestVisible="False"/>
+                   Foreground="Yellow" FontSize="14" 
+                   HorizontalAlignment="Center" VerticalAlignment="Center" 
+                   IsHitTestVisible="False" Visibility="Collapsed"/>
     </Grid>
 </Window>
