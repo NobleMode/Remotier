@@ -31,13 +31,13 @@
 ---
 
 ## Quality / Performance Controls
-- [ ] Speed / Quality / Balanced presets
+- [x] Speed / Quality / Balanced presets
 - [x] Encoding quality slider (Mapped to Resolution Scale)
 - [x] **Resolution Scaling**: 
     - Dynamic scaling based on Client Window Size
     - Manual scaling via Quality Slider
 - [x] FPS options (30/60/120)
-- [ ] Bandwidth estimation
+- [x] Bandwidth estimation
 - [ ] Auto-latency correction
 - [x] Smart Frame Pacing (Host side)
 
@@ -79,7 +79,7 @@
 - [ ] Port forwarding helper
 - [ ] LAN discovery via broadcast
 - [ ] Relay server fallback
-- [ ] Auto-reconnect on drop
+- [x] Auto-reconnect on drop
 - [ ] Packet chunking and jitter buffer (Basic chunking implemented)
 
 ---
