@@ -18,6 +18,7 @@ public class HostService : IDisposable
     private TcpHost _tcpHost = null!;
     private InputService _inputService = null!;
     private UdpStreamSender _streamSender = null!;
+    private DiscoveryService? _discoveryService;
 
     private bool _isHosting;
     private Task? _captureTask; // Made nullable
@@ -69,21 +70,20 @@ public class HostService : IDisposable
         };
         _tcpHost.Start(port);
 
+        _discoveryService = new DiscoveryService();
+        _discoveryService.StartBeacon(port);
+
+        _tcpHost.OnChatReceived += OnChatReceived;
+
         _inputService = new InputService();
         _isHosting = true;
 
         _captureTask = Task.Run(() => CaptureLoop(fps));
     }
 
-    // Removed ProcessLoop, it's now integrated
-
     private async Task CaptureLoop(int fps)
     {
         int targetDelay = 1000 / fps;
-
-        // Pre-allocate buffer for copying from native to managed (if needed) 
-        // OR just send directly from the native pointer if UdpStreamSender supports it (it doesn't yet).
-        // For now, we marshal. copying 200KB is fast enough comparing to Capture overhead.
 
         while (_isHosting)
         {
@@ -98,12 +98,7 @@ public class HostService : IDisposable
             IntPtr pData;
             int size;
 
-            // 1. Native Capture & Encode
-            // We use _scalePercent for resolution scaling.
-            // We use a fixed JPEG quality (e.g. 70) or derive it. 
-            // Let's use 70 as a good baseline, or we could add another slider.
             int jpegQuality = 70;
-            // Or better: If scale is 100 (Quality preset), use 85. If scale is 50, use 65.
             if (_scalePercent >= 90) jpegQuality = 85;
             else if (_scalePercent >= 70) jpegQuality = 75;
             else jpegQuality = 65;
@@ -112,18 +107,13 @@ public class HostService : IDisposable
 
             if (result == 1 && size > 0)
             {
-                // 2. Copy to Managed array (Marshalling)
-                // TODO: Optimization - Pass IntPtr to Sender? 
                 byte[] data = new byte[size];
                 Marshal.Copy(pData, data, 0, size);
 
-                // 3. Send
                 _frameCounter++;
-                // if (_frameCounter % 60 == 0) Console.WriteLine($"Sending frame {_frameCounter} ({size} bytes)");
                 _streamSender.SendFrame(data);
             }
 
-            // Smart Frame Pacing
             long elapsedTicks = sw.ElapsedTicks;
             long targetTicks = Stopwatch.Frequency / fps;
             long remainingTicks = targetTicks - elapsedTicks;
@@ -136,13 +126,6 @@ public class HostService : IDisposable
             }
         }
     }
-
-    // Removed OnControlPacket/InputService code reuse... wait, I replaced too much?
-    // I need to check if I am deleting OnControlPacket methods. 
-    // Yes, the instruction implies "Replace CaptureService...".
-    // I must preserve OnControlPacket and other methods.
-
-    // RE-INJECTING PRESERVED METHODS:
 
     private void OnControlPacket(ControlPacket packet, TcpClient client)
     {
@@ -162,12 +145,10 @@ public class HostService : IDisposable
         }
         else if (packet.Type == PacketType.Settings)
         {
-            // Settings update?
             if (packet.X > 0 && packet.Y > 0)
             {
                 _clientWidth = packet.X;
                 _clientHeight = packet.Y;
-                // Native doesn't support resizing yet
             }
         }
     }
@@ -177,12 +158,25 @@ public class HostService : IDisposable
         _scalePercent = Math.Clamp(scalePercent, 10, 100);
     }
 
-    // ... Helper fields
     private int _clientWidth = 0;
     private int _clientHeight = 0;
     private int _scalePercent = 100;
     private int _connectedCount = 0;
     private int _frameCounter = 0;
+
+    // Chat
+    public event Action<string>? ChatReceived;
+
+    private void OnChatReceived(string message, TcpClient client)
+    {
+        // Passthrough to UI
+        System.Windows.Application.Current.Dispatcher.Invoke(() => ChatReceived?.Invoke(message));
+    }
+
+    public void SendChat(string message)
+    {
+        _tcpHost?.BroadcastChat(message);
+    }
 
     public void Stop()
     {
@@ -194,6 +188,9 @@ public class HostService : IDisposable
         catch { }
 
         NativeMethods.Release();
+
+        _discoveryService?.Stop();
+        _discoveryService = null;
 
         _tcpHost?.Stop();
         _streamSender?.Dispose();

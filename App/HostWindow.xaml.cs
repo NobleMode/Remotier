@@ -15,13 +15,13 @@ namespace Remotier
         private HostService _hostService;
         private DispatcherTimer _timer;
         private DateTime _startTime;
-        private ObservableCollection<string> _clients;
+        private ObservableCollection<string> _chatMessages;
 
         public HostWindow()
         {
             InitializeComponent();
-            _clients = new ObservableCollection<string>();
-            ClientList.ItemsSource = _clients;
+            _chatMessages = new ObservableCollection<string>();
+            ChatList.ItemsSource = _chatMessages;
 
             // Populate Monitors
             int monitorCount = CaptureService.GetMonitorCount();
@@ -57,6 +57,7 @@ namespace Remotier
             // Wire events
             _hostService.ClientConnected += OnClientConnected;
             _hostService.ClientDisconnected += OnClientDisconnected;
+            _hostService.ChatReceived += OnChatReceived;
 
             try
             {
@@ -81,7 +82,7 @@ namespace Remotier
                 IpText.Text = localIp;
 
                 _hostService.Start(5000, options, monitorIndex, fps);
-                StatusText.Text = $"Hosting on {localIp}:5000";
+                StatusText.Text = ($"Hosting on {localIp}:5000. Waiting for client...");
             }
             catch (Exception ex)
             {
@@ -90,12 +91,20 @@ namespace Remotier
             }
         }
 
+        private void OnChatReceived(string msg)
+        {
+            _chatMessages.Add($"Client: {msg}");
+            if (ChatList.Items.Count > 0) ChatList.ScrollIntoView(ChatList.Items[ChatList.Items.Count - 1]);
+        }
+
         private void OnClientConnected(string endpoint)
         {
             Dispatcher.Invoke(() =>
             {
-                _clients.Add(endpoint);
-                StatusText.Text = $"Client connected: {endpoint}";
+                StatusText.Text = $"Connected to Client ({endpoint})";
+                ChatInput.IsEnabled = true;
+                SendBtn.IsEnabled = true;
+                _chatMessages.Add("[System]: Client Connected");
             });
         }
 
@@ -103,9 +112,33 @@ namespace Remotier
         {
             Dispatcher.Invoke(() =>
             {
-                _clients.Remove(endpoint);
-                if (_clients.Count == 0) StatusText.Text = "Waiting for connections...";
+                StatusText.Text = "Waiting for connections...";
+                ChatInput.IsEnabled = false;
+                SendBtn.IsEnabled = false;
+                _chatMessages.Clear(); // "Enable and clear it" per user request kind of?
+                // User said: "disable it and clear it"
             });
+        }
+
+        private void SendBtn_Click(object sender, RoutedEventArgs e)
+        {
+            SendChat();
+        }
+
+        private void ChatInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key == System.Windows.Input.Key.Enter) SendChat();
+        }
+
+        private void SendChat()
+        {
+            string text = ChatInput.Text.Trim();
+            if (string.IsNullOrWhiteSpace(text)) return;
+
+            _hostService?.SendChat(text);
+            _chatMessages.Add($"Me: {text}");
+            ChatInput.Text = "";
+            if (ChatList.Items.Count > 0) ChatList.ScrollIntoView(ChatList.Items[ChatList.Items.Count - 1]);
         }
 
         private async System.Threading.Tasks.Task<string> GetLocalIpAddress()

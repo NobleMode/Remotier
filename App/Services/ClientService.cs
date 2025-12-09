@@ -91,6 +91,7 @@ public class ClientService : IDisposable
 
         _tcpClient = new TcpControlClient();
         _tcpClient.ConnectionLost += OnConnectionLost;
+        _tcpClient.ChatReceived += (msg) => ChatReceived?.Invoke(msg);
 
         try
         {
@@ -165,6 +166,13 @@ public class ClientService : IDisposable
     {
         _tcpClient?.SendControl(packet);
     }
+
+    public void SendChat(string message)
+    {
+        _tcpClient?.SendChat(message);
+    }
+
+    public event Action<string> ChatReceived = delegate { };
 
     private void DisposeResources(bool fullStop = false)
     {

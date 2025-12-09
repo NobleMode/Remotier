@@ -29,6 +29,7 @@
             <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,10,0">
                 <Button Content="Fullscreen" Click="ToggleFullscreen_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White" x:Name="FullscreenBtn"/>
                 <Button Content="Toggle Input" Click="ToggleInput_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White"/>
+                <Button Content="Chat" Click="Chat_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White"/>
                 <Button Content="Disconnect" Click="Disconnect_Click" Width="100" Margin="0,5,0,5" Background="#CC3333" Foreground="White"/>
             </StackPanel>
         </Grid>

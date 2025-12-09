@@ -38,7 +38,7 @@
     - Manual scaling via Quality Slider
 - [x] FPS options (30/60/120)
 - [x] Bandwidth estimation
-- [ ] Auto-latency correction
+- [x] Auto-latency correction
 - [x] Smart Frame Pacing (Host side)
 
 ---
@@ -80,7 +80,7 @@
 - [ ] LAN discovery via broadcast
 - [ ] Relay server fallback
 - [x] Auto-reconnect on drop
-- [ ] Packet chunking and jitter buffer (Basic chunking implemented)
+- [x] Packet chunking and jitter buffer (Jitter Buffer implemented)
 - [ ] Auto discovery of host (Dont know if should be in menu also, or has to be in host mode)
 
 ---

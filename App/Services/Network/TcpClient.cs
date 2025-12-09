@@ -22,20 +22,46 @@ public class TcpControlClient : IDisposable
         _ = Task.Run(ReadLoop);
     }
 
+    public event Action<string> ChatReceived = delegate { };
+
     private async Task ReadLoop()
     {
-        byte[] buffer = new byte[1];
+        byte[] headerBuffer = new byte[1];
         try
         {
-            while (_isConnected && _client.Connected)
+            using (var stream = _client.GetStream()) // Do not dispose stream as it closes client? No, keep it open.
             {
-                // We don't expect data from Host on this channel yet, but reading 0 bytes means closed.
-                int read = await _stream.ReadAsync(buffer, 0, 1);
-                if (read == 0)
+                while (_isConnected && _client.Connected)
                 {
-                    // Disconnected
-                    NotifyConnectionLost();
-                    break;
+                    int read = await _stream.ReadAsync(headerBuffer, 0, 1);
+                    if (read == 0)
+                    {
+                        NotifyConnectionLost();
+                        break;
+                    }
+
+                    PacketType type = (PacketType)headerBuffer[0];
+                    if (type == PacketType.Chat)
+                    {
+                        byte[] lengthBuffer = new byte[4];
+                        await _stream.ReadExactlyAsync(lengthBuffer, 0, 4);
+                        int validLen = BitConverter.ToInt32(lengthBuffer, 0);
+
+                        if (validLen > 0 && validLen < 1024 * 10)
+                        {
+                            byte[] stringBuffer = new byte[validLen];
+                            await _stream.ReadExactlyAsync(stringBuffer, 0, validLen);
+                            string msg = System.Text.Encoding.UTF8.GetString(stringBuffer);
+                            ChatReceived?.Invoke(msg);
+                        }
+                    }
+                    else
+                    {
+                        // Client currently doesn't expect other packets from Host.
+                        // But if Host sends ControlPacket back? Unlikely in this version.
+                        // Just consume it if necessary or ignore?
+                        // For now, assume only Chat is sent from Host -> Client.
+                    }
                 }
             }
         }
@@ -43,6 +69,24 @@ public class TcpControlClient : IDisposable
         {
             NotifyConnectionLost();
         }
+    }
+
+    public async Task SendChat(string message)
+    {
+        if (_client == null || !_client.Connected || !_isConnected) return;
+        try
+        {
+            byte[] msgBytes = System.Text.Encoding.UTF8.GetBytes(message);
+            byte[] lengthBytes = BitConverter.GetBytes(msgBytes.Length);
+
+            byte[] data = new byte[1 + 4 + msgBytes.Length];
+            data[0] = (byte)PacketType.Chat;
+            Array.Copy(lengthBytes, 0, data, 1, 4);
+            Array.Copy(msgBytes, 0, data, 5, msgBytes.Length);
+
+            await _stream.WriteAsync(data, 0, data.Length);
+        }
+        catch { NotifyConnectionLost(); }
     }
 
     public void SendControl(ControlPacket packet)

@@ -103,6 +103,8 @@ public partial class RemoteViewWindow : Window
 
         try
         {
+            _clientService.ChatReceived += OnChatReceived;
+
             await _clientService.ConnectAsync(_info.IP, _info.Port);
             DebugInfo.Text = "Connected";
 
@@ -122,8 +124,38 @@ public partial class RemoteViewWindow : Window
         }
     }
 
+    private ChatWindow? _chatWindow;
+
+    private void Chat_Click(object sender, RoutedEventArgs e)
+    {
+        OpenChatWindow();
+    }
+
+    private void OpenChatWindow()
+    {
+        if (_chatWindow == null || !_chatWindow.IsVisible)
+        {
+            _chatWindow = new ChatWindow();
+            _chatWindow.Closed += (s, e) => _chatWindow = null;
+            _chatWindow.MessageSent += (msg) => _clientService.SendChat(msg);
+            _chatWindow.Show();
+        }
+        _chatWindow.Activate();
+    }
+
+    private void OnChatReceived(string message)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            OpenChatWindow();
+            _chatWindow?.AddMessage("Host", message);
+            if (!_chatWindow.IsActive) _chatWindow.Activate();
+        });
+    }
+
     private void RemoteViewWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
+        _chatWindow?.Close();
         _clientService?.Dispose();
     }
 

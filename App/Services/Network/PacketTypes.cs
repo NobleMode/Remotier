@@ -7,7 +7,8 @@ public enum PacketType : byte
     Keyboard = 0x03,
     Connect = 0x04,
     Disconnect = 0x05,
-    Settings = 0x06
+    Settings = 0x06,
+    Chat = 0x07
 }
 
 public enum MouseAction : byte
