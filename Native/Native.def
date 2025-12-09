@@ -1,0 +1,5 @@
+LIBRARY Native
+EXPORTS
+   Init
+   CaptureAndEncode
+   Release
