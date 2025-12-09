@@ -1,94 +1,114 @@
 ﻿<Window x:Class="Remotier.HostWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Hosting Session" Height="450" Width="600"
+        xmlns:materialIcons="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
+        Title="Remotier Host" Height="500" Width="400"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}"
-        Loaded="Window_Loaded" Closing="Window_Closing">
-    <Grid Margin="15">
+        Closing="Window_Closing">
+    <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="HOSTING SESSION" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center"/>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,10,0,0">
-                 <TextBlock Text="IP Address: " VerticalAlignment="Center" Foreground="#AAAAAA"/>
-                 <TextBlock x:Name="IpText" Text="127.0.0.1" VerticalAlignment="Center" FontWeight="Bold" Margin="5,0,10,0"/>
-                 <Button Content="Copy" Click="CopyIp_Click" Padding="5,2" FontSize="10" Height="20"/>
+        <StackPanel HorizontalAlignment="Center" Margin="0,0,0,20">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,5">
+                <materialIcons:MaterialIcon Kind="ServerNetwork" Width="24" Height="24" Foreground="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="HOSTING SESSION" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
             </StackPanel>
-            <TextBlock x:Name="TimerText" Text="00:00:00" HorizontalAlignment="Center" Margin="0,5,0,0" Foreground="#888888"/>
+            
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                 <TextBlock Text="IP: " Foreground="#888888"/>
+                 <TextBlock x:Name="IpText" Text="127.0.0.1" Foreground="White" FontWeight="Bold" Margin="0,0,10,0"/>
+                 <Button Content="Copy" Padding="5,0" Height="18" FontSize="10" Click="CopyIp_Click" Background="#333333" Foreground="White" BorderThickness="0"/>
+            </StackPanel>
         </StackPanel>
 
-        <!-- Content -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="15"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Settings -->
-            <StackPanel Grid.Column="0">
-                <TextBlock Text="SESSION SETTINGS"  FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}"/>
+        <!-- Settings Section -->
+        <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" CornerRadius="5" Padding="15" Margin="0,0,0,20">
+            <StackPanel>
+                <TextBlock Text="Stream Settings" FontWeight="Bold" Margin="0,0,0,10"/>
                 
-                <TextBlock Text="Performance Preset" Margin="0,5,0,2"/>
-                <ComboBox x:Name="PresetCombo" SelectionChanged="PresetCombo_SelectionChanged">
-                    <ComboBoxItem Content="Speed (Low Latency)" Tag="Speed"/>
-                    <ComboBoxItem Content="Balanced (Default)" Tag="Balanced" IsSelected="True"/>
-                    <ComboBoxItem Content="Quality (High Res)" Tag="Quality"/>
-                    <ComboBoxItem Content="Custom" Tag="Custom"/>
-                </ComboBox>
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <materialIcons:MaterialIcon Kind="Monitor" Width="16" Height="16" Foreground="Gray" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" x:Name="MonitorSelector" SelectionChanged="MonitorSelector_SelectionChanged" Background="#444444" Foreground="White" BorderThickness="0"/>
+                </Grid>
 
-                <TextBlock Text="Monitor Source" Margin="0,5,0,2"/>
-                <ComboBox x:Name="MonitorCombo" SelectionChanged="MonitorCombo_SelectionChanged"/>
+                 <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <materialIcons:MaterialIcon Kind="HighDefinition" Width="16" Height="16" Foreground="Gray" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" x:Name="QualitySelector" SelectionChanged="QualitySelector_SelectionChanged" Background="#444444" Foreground="White" BorderThickness="0"/>
+                </Grid>
+            </StackPanel>
+        </Border>
 
-                <TextBlock Text="Target FPS" Margin="0,10,0,2"/>
-                <ComboBox x:Name="FpsCombo" SelectionChanged="FpsCombo_SelectionChanged">
-                    <ComboBoxItem Content="30 FPS" Tag="30"/>
-                    <ComboBoxItem Content="60 FPS" Tag="60" IsSelected="True"/>
-                    <ComboBoxItem Content="120 FPS" Tag="120"/>
-                </ComboBox>
+        <!-- Chat / Status Section -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-                <DockPanel Margin="0,10,0,2">
-                    <TextBlock Text="Quality (JPEG)"/>
-                    <TextBlock Text="{Binding Value, ElementName=QualitySlider, StringFormat={}{0:0}%}" HorizontalAlignment="Right" Foreground="#AAAAAA"/>
-                </DockPanel>
-                <Slider x:Name="QualitySlider" Minimum="1" Maximum="100" Value="75" TickFrequency="10" IsSnapToTickEnabled="True" ValueChanged="QualitySlider_ValueChanged"/>
+            <!-- Status -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                 <materialIcons:MaterialIcon Kind="Wifi" Width="16" Height="16" Foreground="#AAAAAA" Margin="0,0,5,0"/>
+                 <TextBlock x:Name="StatusText" Text="Waiting for connections..." FontStyle="Italic" Foreground="#AAAAAA" TextWrapping="Wrap"/>
             </StackPanel>
 
-            <!-- Chat / Clients -->
-            <StackPanel Grid.Column="2">
-                <TextBlock Text="CHAT &amp; CLIENT" FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}"/>
-                
-                <!-- Status -->
-                <TextBlock x:Name="StatusText" Text="Waiting for connections..." Margin="0,0,0,5" FontStyle="Italic" Foreground="#AAAAAA" TextWrapping="Wrap"/>
-
-                <!-- Messages -->
-                <ListBox x:Name="ChatList" Height="150" Background="{StaticResource SurfaceBrush}" BorderThickness="0" Foreground="White" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <!-- Chat Box -->
+            <Border Grid.Row="1" Background="{StaticResource SurfaceBrush}" CornerRadius="5" Padding="5">
+                <ListBox x:Name="ChatList" Background="Transparent" BorderThickness="0" Foreground="White" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                      <ListBox.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="5"/>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
+            </Border>
 
-                <!-- Input -->
-                <Grid Margin="0,10,0,0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBox x:Name="ChatInput" KeyDown="ChatInput_KeyDown" IsEnabled="False" VerticalContentAlignment="Center" Height="25"/>
-                    <Button Grid.Column="1" x:Name="SendBtn" Content="Send" Click="SendBtn_Click" IsEnabled="False" Margin="10,0,0,0" Width="50"/>
-                </Grid>
-            </StackPanel>
+            <!-- Chat Input -->
+            <Grid Grid.Row="2" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="ChatInput" KeyDown="ChatInput_KeyDown" IsEnabled="False" VerticalContentAlignment="Center" Height="30" Padding="5"/>
+                <Button Grid.Column="1" x:Name="SendBtn" Click="SendBtn_Click" IsEnabled="False" Margin="10,0,0,0" Width="40" Background="{StaticResource AccentBrush}" BorderThickness="0">
+                     <materialIcons:MaterialIcon Kind="Send" Width="16" Height="16" Foreground="White"/>
+                </Button>
+            </Grid>
         </Grid>
 
-        <!-- Footer -->
-        <Button Grid.Row="2" Content="Stop Hosting" Background="#CC3333" Height="35" Margin="0,15,0,0" Click="Stop_Click"/>
+        <!-- Stop Button -->
+        <Button Grid.Row="3" Click="Stop_Click" Margin="0,20,0,0" Background="#CC3333" Foreground="White" Height="40" BorderThickness="0">
+             <Button.Template>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                             <materialIcons:MaterialIcon Kind="StopCircle" Width="20" Height="20" Margin="0,0,10,0"/>
+                             <TextBlock Text="Stop Hosting" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                             <Setter Property="Opacity" Value="0.9"/>
+                             <Setter Property="Cursor" Value="Hand"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Button.Template>
+        </Button>
     </Grid>
 </Window>

@@ -1,12 +1,50 @@
 ﻿<Window x:Class="Remotier.RemoteViewWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
         Title="Remotier Viewer" Height="720" Width="1280"
         WindowState="Normal"
         WindowStyle="SingleBorderWindow"
         Background="Black"
         KeyDown="Window_KeyDown" KeyUp="Window_KeyUp"
         SizeChanged="RemoteViewWindow_SizeChanged">
+    <Window.Resources>
+        <!-- Hover Icon All Button Style -->
+        <Style x:Key="HoverIconButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="15" Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal">
+                                <ContentPresenter ContentSource="Tag" /> <!-- Icon Holder -->
+                                <TextBlock Text="{TemplateBinding Content}" 
+                                           x:Name="TextLabel"
+                                           Margin="8,0,0,0" 
+                                           VerticalAlignment="Center" 
+                                           Visibility="Collapsed" 
+                                           FontSize="12" FontWeight="SemiBold"/>
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TextLabel" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Background" Value="#44FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Image x:Name="ScreenImage" Stretch="Uniform" 
                MouseMove="ScreenImage_MouseMove" 
@@ -14,25 +52,57 @@
                MouseUp="ScreenImage_MouseUp"
                MouseWheel="ScreenImage_MouseWheel"/>
         
-        <!-- Overlay (Top HUD) -->
-        <Grid VerticalAlignment="Top" Background="#CC000000" Height="40">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- Floating Toolbar -->
+        <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,20,0,0">
+            
+            <!-- Main Bar -->
+            <Border x:Name="ToolbarPanel" Background="#CC202020" CornerRadius="20" Padding="15,5" Visibility="Visible">
+                <StackPanel Orientation="Horizontal">
+                    <!-- Stats -->
+                    <TextBlock x:Name="StatsText" Text="FPS: 0 | 0ms" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,15,0" FontSize="11"/>
+                    
+                    <!-- Vertical Divider -->
+                    <Border Width="1" Background="#44FFFFFF" Margin="0,5,10,5"/>
 
-            <!-- Stats -->
-            <TextBlock x:Name="StatsText" Text="FPS: 0 | Latency: 0ms" Foreground="White" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    <!-- Action Buttons -->
+                    <Button Style="{StaticResource HoverIconButtonStyle}" Content="Fullscreen" Click="ToggleFullscreen_Click" x:Name="FullscreenBtn">
+                        <Button.Tag>
+                            <materialIcons:MaterialIcon Kind="Fullscreen" Width="20" Height="20" />
+                        </Button.Tag>
+                    </Button>
+                    
+                    <Button Style="{StaticResource HoverIconButtonStyle}" Content="Input" Click="ToggleInput_Click">
+                        <Button.Tag>
+                            <materialIcons:MaterialIcon Kind="Keyboard" Width="20" Height="20" />
+                        </Button.Tag>
+                    </Button>
 
-            <!-- Controls -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,10,0">
-                <Button Content="Fullscreen" Click="ToggleFullscreen_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White" x:Name="FullscreenBtn"/>
-                <Button Content="Toggle Input" Click="ToggleInput_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White"/>
-                <Button Content="Chat" Click="Chat_Click" Width="100" Margin="0,5,10,5" Background="#444444" Foreground="White"/>
-                <Button Content="Disconnect" Click="Disconnect_Click" Width="100" Margin="0,5,0,5" Background="#CC3333" Foreground="White"/>
-            </StackPanel>
-        </Grid>
+                    <Button Style="{StaticResource HoverIconButtonStyle}" Content="Chat" Click="Chat_Click">
+                        <Button.Tag>
+                            <materialIcons:MaterialIcon Kind="Chat" Width="20" Height="20" />
+                        </Button.Tag>
+                    </Button>
+
+                    <Button Style="{StaticResource HoverIconButtonStyle}" Content="Disconnect" Click="Disconnect_Click" Foreground="#FF5555">
+                        <Button.Tag>
+                            <materialIcons:MaterialIcon Kind="Power" Width="20" Height="20" />
+                        </Button.Tag>
+                    </Button>
+                </StackPanel>
+            </Border>
+
+            <!-- Toggle Chevron (To Show/Hide) -->
+             <Button Click="ToggleToolbar_Click" Background="#CC202020" Width="40" Height="20" Margin="0,-5,0,0" BorderThickness="0">
+                 <Button.Template>
+                     <ControlTemplate TargetType="Button">
+                         <Border Background="{TemplateBinding Background}" CornerRadius="0,0,10,10">
+                              <materialIcons:MaterialIcon x:Name="ChevronIcon" Kind="ChevronUp" Width="16" Height="16" Foreground="#AAAAAA"/>
+                         </Border>
+                     </ControlTemplate>
+                 </Button.Template>
+             </Button>
+
+        </StackPanel>
         
         <!-- Reconnecting Overlay -->
         <Grid x:Name="ReconnectingOverlay" Visibility="Collapsed" Background="#CC000000">

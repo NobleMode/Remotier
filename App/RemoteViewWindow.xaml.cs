@@ -126,6 +126,20 @@ public partial class RemoteViewWindow : Window
 
     private ChatWindow? _chatWindow;
 
+    private void ToggleToolbar_Click(object sender, RoutedEventArgs e)
+    {
+        if (ToolbarPanel.Visibility == Visibility.Visible)
+        {
+            ToolbarPanel.Visibility = Visibility.Collapsed;
+            // ChevronIcon.Kind = Material.Icons.MaterialIconKind.ChevronDown; // Need to bind or find element
+        }
+        else
+        {
+            ToolbarPanel.Visibility = Visibility.Visible;
+            // ChevronIcon.Kind = Material.Icons.MaterialIconKind.ChevronUp;
+        }
+    }
+
     private void Chat_Click(object sender, RoutedEventArgs e)
     {
         OpenChatWindow();
