@@ -172,11 +172,28 @@ public class HostService : IDisposable
                 // Console.WriteLine("CaptureFrame returned null"); 
             }
 
-            // Smart Delay to maintain target framerate of ~60 FPS
-            sw.Stop();
-            int elapsed = (int)sw.ElapsedMilliseconds;
-            int delay = Math.Max(0, targetDelay - elapsed);
-            await Task.Delay(delay);
+            // Smart Frame Pacing (SpinWait for precision)
+            long elapsedTicks = sw.ElapsedTicks;
+            long targetTicks = Stopwatch.Frequency / fps;
+            long remainingTicks = targetTicks - elapsedTicks;
+
+            if (remainingTicks > 0)
+            {
+                // If we have significantly more time than 1-2ms, sleep a bit to save CPU
+                // 10,000 ticks = 1ms
+                long msToSleep = (remainingTicks / 10000) - 2;
+                if (msToSleep > 0)
+                {
+                    await Task.Delay((int)msToSleep);
+                }
+
+                // Spin for the last bit
+                while (sw.ElapsedTicks < targetTicks)
+                {
+                    // Busy wait for high precision
+                    Thread.SpinWait(100);
+                }
+            }
         }
 
         _frameQueue.CompleteAdding();

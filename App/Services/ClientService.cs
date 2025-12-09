@@ -9,8 +9,8 @@ namespace Remotier.Services;
 
 public class ClientService : IDisposable
 {
-    private UdpStreamReceiver _receiver;
-    private TcpControlClient _tcpClient;
+    private UdpStreamReceiver? _receiver;
+    private TcpControlClient? _tcpClient;
 
     public event Action<BitmapImage>? OnFrameReady;
     public event Action? Reconnecting;

@@ -44,8 +44,21 @@ public class CompressionService
         {
             if (_enableScaling)
             {
-                using (var resized = new Bitmap(bitmap, new Size(_scaleWidth, _scaleHeight)))
+                // Optimization: Use Graphics for faster scaling (NearestNeighbor or Low)
+                // The default 'new Bitmap(source, width, height)' uses HighQualityBicubic which is very slow
+                using (var resized = new Bitmap(_scaleWidth, _scaleHeight))
                 {
+                    using (var g = Graphics.FromImage(resized))
+                    {
+                        // Use low quality for speed
+                        g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                        g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighSpeed;
+                        g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
+
+                        g.DrawImage(bitmap, 0, 0, _scaleWidth, _scaleHeight);
+                    }
                     resized.Save(ms, _jpegEncoder, _encoderParams);
                 }
             }

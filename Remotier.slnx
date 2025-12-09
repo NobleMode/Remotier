@@ -1,3 +1,9 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
   <Project Path="App/App.csproj" Id="78d800ed-2a9f-4066-80a8-d5af8230fcb4" />
+  <Project Path="Native/Native.vcxproj" Id="c9eb1fbf-247b-43c1-922a-d3a3c539b803" />
 </Solution>
