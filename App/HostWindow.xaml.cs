@@ -192,11 +192,13 @@ namespace Remotier
             _isApplyingPreset = true;
             try
             {
+                if (QualitySlider == null) return;
+
                 switch (tag)
                 {
                     case "Speed":
                         SetFps(60);
-                        QualitySlider.Value = 50;
+                        QualitySlider.Value = 65;
                         break;
                     case "Balanced":
                         SetFps(60);
@@ -226,6 +228,7 @@ namespace Remotier
 
         private void SetFps(int fps)
         {
+            if (FpsCombo == null) return;
             foreach (ComboBoxItem item in FpsCombo.Items)
             {
                 if (item.Tag.ToString() == fps.ToString())

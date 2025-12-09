@@ -28,30 +28,49 @@ public class UdpStreamReceiver : IDisposable
     public void Start(int port)
     {
         _udpClient = new UdpClient(port);
+        // Optimization: Increase Receive Buffer
+        _udpClient.Client.ReceiveBufferSize = 1024 * 1024 * 4; // 4MB
         _isRunning = true;
         Task.Run(ReceiveLoop);
     }
 
     private async Task ReceiveLoop()
     {
-        while (_isRunning)
+        // Reuse a single buffer for receiving, as process packet copies data immediately
+        byte[] buffer = BufferPool.Rent();
+        var receiveSegment = new ArraySegment<byte>(buffer);
+
+        try
         {
-            try
+            while (_isRunning)
             {
-                var result = await _udpClient.ReceiveAsync();
-                TotalBytesReceived += result.Buffer.Length;
-                ProcessPacket(result.Buffer);
+                try
+                {
+                    // UdpClient wrapper doesn't expose allocation-free ReceiveAsync easily without dropping down to Client (Socket)
+                    // So we use the underlying Socket from UdpClient
+                    int received = await _udpClient.Client.ReceiveAsync(receiveSegment, SocketFlags.None);
+
+                    if (received > 0)
+                    {
+                        TotalBytesReceived += received;
+                        ProcessPacket(buffer, received);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (_isRunning) Debug.WriteLine($"UDP Receive Error: {ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"UDP Receive Error: {ex.Message}");
-            }
+        }
+        finally
+        {
+            BufferPool.Return(buffer);
         }
     }
 
-    private unsafe void ProcessPacket(byte[] data)
+    private unsafe void ProcessPacket(byte[] data, int length)
     {
-        if (data.Length < sizeof(FrameHeader)) return;
+        if (length < sizeof(FrameHeader)) return;
 
         fixed (byte* pData = data)
         {
@@ -70,18 +89,21 @@ public class UdpStreamReceiver : IDisposable
             }
 
             var frame = _frameBuffer[header->FrameId];
-            int offset = header->ChunkIndex * 60000; // Should match Sender MaxPacketSize
-            // Or better, calculate based on payload size if variable, but here we assume fixed chunks except last.
-            // Actually, we should just copy payload.
             int headerSize = sizeof(FrameHeader);
-
-            // Using PayloadSize to support variable sized chunks if sender changes logic
             int writePos = header->ChunkIndex * 60000;
 
+            // Validate write bounds
             if (writePos + header->PayloadSize <= frame.Data.Length)
             {
-                Array.Copy(data, headerSize, frame.Data, writePos, header->PayloadSize);
-                frame.ReceivedChunks++;
+                // We must use header->PayloadSize or (length - headerSize)
+                // They should be equal, but use header payload size for safety in logic
+                int payloadSize = Math.Min(header->PayloadSize, length - headerSize);
+
+                if (payloadSize > 0)
+                {
+                    Array.Copy(data, headerSize, frame.Data, writePos, payloadSize);
+                    frame.ReceivedChunks++;
+                }
             }
 
             if (frame.ReceivedChunks >= frame.TotalChunks)

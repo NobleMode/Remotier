@@ -7,20 +7,22 @@ namespace Remotier.Services.Network;
 
 public class UdpStreamSender : IDisposable
 {
-    private UdpClient _udpClient;
+    private Socket _socket;
     private IPEndPoint _remoteEndPoint = null!;
     private int _sequenceId;
-    private const int MaxPacketSize = 60000; // Safe below 65535
+    private const int MaxPacketSize = 60000;
 
     public UdpStreamSender()
     {
-        _udpClient = new UdpClient();
+        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+        // Optional: Increase buffer size
+        _socket.SendBufferSize = 1024 * 1024; // 1MB
     }
 
     public void Connect(string ip, int port)
     {
         _remoteEndPoint = new IPEndPoint(IPAddress.Parse(ip), port);
-        _udpClient.Connect(_remoteEndPoint);
+        _socket.Connect(_remoteEndPoint);
     }
 
     public unsafe void SendFrame(byte[] frameData)
@@ -36,27 +38,37 @@ public class UdpStreamSender : IDisposable
             int offset = i * MaxPacketSize;
             int size = Math.Min(MaxPacketSize, totalSize - offset);
 
-            byte[] packet = new byte[sizeof(FrameHeader) + size];
-
-            fixed (byte* pPacket = packet)
+            byte[] packetBuffer = BufferPool.Rent();
+            try
             {
-                FrameHeader* header = (FrameHeader*)pPacket;
-                header->Type = PacketType.Frame;
-                header->FrameId = _sequenceId;
-                header->PayloadSize = size;
-                header->ChunkIndex = i;
-                header->ChunkCount = chunkCount;
-                header->TotalFrameSize = totalSize;
-            }
+                int headerSize = sizeof(FrameHeader);
 
-            Array.Copy(frameData, offset, packet, sizeof(FrameHeader), size);
-            _udpClient.Send(packet, packet.Length);
+                fixed (byte* pPacket = packetBuffer)
+                {
+                    FrameHeader* header = (FrameHeader*)pPacket;
+                    header->Type = PacketType.Frame;
+                    header->FrameId = _sequenceId;
+                    header->PayloadSize = size;
+                    header->ChunkIndex = i;
+                    header->ChunkCount = chunkCount;
+                    header->TotalFrameSize = totalSize;
+                }
+
+                Array.Copy(frameData, offset, packetBuffer, headerSize, size);
+
+                // Send sync is usually fast enough for UDP, avoids async overhead for fire-and-forget
+                _socket.Send(packetBuffer, 0, headerSize + size, SocketFlags.None);
+            }
+            finally
+            {
+                BufferPool.Return(packetBuffer);
+            }
         }
     }
 
     public void Dispose()
     {
-        _udpClient?.Close();
-        _udpClient?.Dispose();
+        _socket?.Close();
+        _socket?.Dispose();
     }
 }

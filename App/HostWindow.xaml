@@ -53,9 +53,11 @@
                     <ComboBoxItem Content="120 FPS" Tag="120"/>
                 </ComboBox>
 
-                <TextBlock Text="Quality (JPEG)" Margin="0,10,0,2"/>
+                <DockPanel Margin="0,10,0,2">
+                    <TextBlock Text="Quality (JPEG)"/>
+                    <TextBlock Text="{Binding Value, ElementName=QualitySlider, StringFormat={}{0:0}%}" HorizontalAlignment="Right" Foreground="#AAAAAA"/>
+                </DockPanel>
                 <Slider x:Name="QualitySlider" Minimum="1" Maximum="100" Value="75" TickFrequency="10" IsSnapToTickEnabled="True" ValueChanged="QualitySlider_ValueChanged"/>
-                <TextBlock Text="{Binding Value, ElementName=QualitySlider, StringFormat={}{0}%}" HorizontalAlignment="Right" Foreground="#888888"/>
             </StackPanel>
 
             <!-- Clients -->
