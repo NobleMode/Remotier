@@ -1,17 +1,18 @@
 # Remote Access App – Feature List
 
-## Core Features
 - [x] **Host Mode**
   - [x] Share screen with client
   - [x] Start/stop hosting
   - [x] Display host IP / code
   - [x] **Smart Idle**: Pause capture when no clients connected
+  - [x] **Single Client Architecture**: Strictly customized for 1:1 sessions.
 
 - [x] **Client Mode**
   - [x] Connect to host
   - [x] Display remote stream
   - [x] Windowed Mode by Default (Toggleable)
   - [x] Send mouse and keyboard input
+  - [x] **Floating Pill Toolbar**: Modern overlay for controls.
 
 - [x] **Screen Capture**
   - [x] DXGI Desktop Duplication
@@ -55,20 +56,20 @@
 ## Advanced Features (Optional)
 - [ ] Clipboard sync (text/files)
 - [ ] File transfer
-- [ ] Built-in chat
+- [x] Built-in chat (Embedded)
 - [ ] Audio streaming (Opus)
-- [x] Multi-client viewing (Host supports multiple, Viewers independent)
 - [ ] Session recording
 - [x] Window-only streaming (Host acts as window)
 - [ ] GPU H.264 encoding (NVENC/AMF/QSV)
 
 ---
 
-## User Interface (Pass Thru 1)
+## User Interface (Pass Thru 2)
 - [x] Simple Host / Connect main menu
-- [x] **Global Dark Theme**
-- [x] Connection status indicators (Client List)
-- [x] FPS & latency display (Overlay)
+- [x] **Global Dark Theme** (Modernized)
+- [x] **Material Design Icons** (All Windows)
+- [x] Connection status indicators (Client Info)
+- [x] FPS & latency display (Overlay / Toolbar)
 - [x] Quality indicator (Resolution Stats)
 - [x] Hotkeys (e.g., disconnect, fullscreen)
 - [x] **Recent Connections** list
@@ -77,11 +78,11 @@
 
 ## Networking
 - [ ] Port forwarding helper
-- [ ] LAN discovery via broadcast
+- [x] LAN discovery via broadcast
 - [ ] Relay server fallback
 - [x] Auto-reconnect on drop
 - [x] Packet chunking and jitter buffer (Jitter Buffer implemented)
-- [ ] Auto discovery of host (Dont know if should be in menu also, or has to be in host mode)
+- [x] Auto discovery of host
 
 ---
 
@@ -91,7 +92,6 @@
 - [ ] Tray minimization
 - [ ] Logging system
 - [ ] Crash reporting
-- [ ] Auto discovery of host
 
 ---
 
