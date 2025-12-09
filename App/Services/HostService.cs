@@ -34,7 +34,7 @@ public class HostService : IDisposable
         public static extern int Init(int monitorIndex);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
-        public static extern int CaptureAndEncode(int quality, out IntPtr outData, out int outSize);
+        public static extern int CaptureAndEncode(int scalePercent, int quality, out IntPtr outData, out int outSize);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void Release();
@@ -99,10 +99,16 @@ public class HostService : IDisposable
             int size;
 
             // 1. Native Capture & Encode
-            // Quality is passed dynamically. 
-            // Note: Native implementation currently ignores scale, strictly captures screen size. 
-            // WICEncoder might resizing if we updated it, but for now assuming 1:1 or native handles it.
-            int result = NativeMethods.CaptureAndEncode(_scalePercent, out pData, out size);
+            // We use _scalePercent for resolution scaling.
+            // We use a fixed JPEG quality (e.g. 70) or derive it. 
+            // Let's use 70 as a good baseline, or we could add another slider.
+            int jpegQuality = 70;
+            // Or better: If scale is 100 (Quality preset), use 85. If scale is 50, use 65.
+            if (_scalePercent >= 90) jpegQuality = 85;
+            else if (_scalePercent >= 70) jpegQuality = 75;
+            else jpegQuality = 65;
+
+            int result = NativeMethods.CaptureAndEncode(_scalePercent, jpegQuality, out pData, out size);
 
             if (result == 1 && size > 0)
             {

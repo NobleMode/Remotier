@@ -36,9 +36,11 @@ HRESULT WICEncoder::Initialize(ID3D11Device* device, int width, int height)
     return hr;
 }
 
-HRESULT WICEncoder::Encode(ID3D11Texture2D* texture, ID3D11DeviceContext* context, int quality, std::vector<BYTE>& outData)
+HRESULT WICEncoder::Encode(ID3D11Texture2D* texture, ID3D11DeviceContext* context, int scalePercent, int quality, std::vector<BYTE>& outData)
 {
     if (!m_stagingTexture || !m_factory) return E_FAIL;
+    if (scalePercent < 10) scalePercent = 10;
+    if (scalePercent > 100) scalePercent = 100;
 
     // Copy to staging
     context->CopyResource(m_stagingTexture.Get(), texture);
@@ -76,14 +78,46 @@ HRESULT WICEncoder::Encode(ID3D11Texture2D* texture, ID3D11DeviceContext* contex
 
     if (SUCCEEDED(hr))
     {
-        hr = frame->SetSize(m_width, m_height);
-        WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
-        if (SUCCEEDED(hr)) hr = frame->SetPixelFormat(&format);
+        // Calculate Target Size
+        int targetW = (m_width * scalePercent) / 100;
+        int targetH = (m_height * scalePercent) / 100;
         
+        hr = frame->SetSize(targetW, targetH);
+        
+        ComPtr<IWICBitmap> wrapperBitmap;
         if (SUCCEEDED(hr))
         {
-            // Write pixels
-            hr = frame->WritePixels(m_height, map.RowPitch, map.RowPitch * m_height, (BYTE*)map.pData);
+             hr = m_factory->CreateBitmapFromMemory(
+                 m_width, m_height, 
+                 GUID_WICPixelFormat32bppBGRA,
+                 map.RowPitch, 
+                 map.RowPitch * m_height, 
+                 (BYTE*)map.pData, 
+                 &wrapperBitmap
+             );
+        }
+
+        // Create Scaler if needed
+        ComPtr<IWICBitmapSource> finalSource = wrapperBitmap;
+        ComPtr<IWICBitmapScaler> scaler;
+
+        if (SUCCEEDED(hr) && scalePercent < 100)
+        {
+             hr = m_factory->CreateBitmapScaler(&scaler);
+             if (SUCCEEDED(hr))
+             {
+                 // Use NearestNeighbor for valid performance (Fant is too slow for real-time)
+                 hr = scaler->Initialize(wrapperBitmap.Get(), targetW, targetH, WICBitmapInterpolationModeNearestNeighbor);
+                 if (SUCCEEDED(hr)) finalSource = scaler;
+             }
+        }
+
+        if (SUCCEEDED(hr))
+        {
+            WICPixelFormatGUID format = GUID_WICPixelFormat32bppBGRA;
+            hr = frame->SetPixelFormat(&format);
+            
+            if (SUCCEEDED(hr)) hr = frame->WriteSource(finalSource.Get(), nullptr);
         }
         
         if (SUCCEEDED(hr)) hr = frame->Commit();

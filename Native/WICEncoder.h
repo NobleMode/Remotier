@@ -13,7 +13,7 @@ public:
     ~WICEncoder();
 
     HRESULT Initialize(ID3D11Device* device, int width, int height);
-    HRESULT Encode(ID3D11Texture2D* texture, ID3D11DeviceContext* context, int quality, std::vector<BYTE>& outData);
+    HRESULT Encode(ID3D11Texture2D* texture, ID3D11DeviceContext* context, int scalePercent, int quality, std::vector<BYTE>& outData);
 
 private:
     ComPtr<IWICImagingFactory> m_factory;

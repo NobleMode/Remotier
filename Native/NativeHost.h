@@ -9,6 +9,6 @@
 extern "C"
 {
     NATIVE_API int Init(int monitorIndex);
-    NATIVE_API int CaptureAndEncode(int quality, BYTE** outData, int* outSize);
+    NATIVE_API int CaptureAndEncode(int scalePercent, int quality, BYTE** outData, int* outSize);
     NATIVE_API void Release();
 }

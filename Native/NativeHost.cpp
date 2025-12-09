@@ -29,29 +29,49 @@ int Init(int monitorIndex)
     return 0; // Success
 }
 
-int CaptureAndEncode(int quality, BYTE** outData, int* outSize)
+int CaptureAndEncode(int scalePercent, int quality, BYTE** outData, int* outSize)
 {
+    // Initialize COM on this thread (needed for WIC)
+    HRESULT coinit = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+
     std::lock_guard<std::mutex> lock(g_Mutex);
     
-    if (!g_Capture || !g_Encoder) return -1;
+    if (!g_Capture || !g_Encoder) 
+    {
+        if (coinit == S_OK || coinit == S_FALSE) CoUninitialize();
+        return -1;
+    }
 
     ID3D11Texture2D* texture = nullptr;
     HRESULT hr = g_Capture->CaptureFrame(&texture, 100);
     
-    if (hr == DXGI_ERROR_WAIT_TIMEOUT) return 0; // Timeout
-    if (FAILED(hr) || !texture) return -2; // Error
+    if (hr == DXGI_ERROR_WAIT_TIMEOUT) 
+    {
+        if (coinit == S_OK || coinit == S_FALSE) CoUninitialize();
+        return 0; // Timeout
+    }
+    if (FAILED(hr) || !texture) 
+    {
+        if (coinit == S_OK || coinit == S_FALSE) CoUninitialize();
+        return -2; // Error
+    }
 
     // Encode
-    hr = g_Encoder->Encode(texture, g_Capture->GetContext(), quality, g_Buffer);
+    hr = g_Encoder->Encode(texture, g_Capture->GetContext(), scalePercent, quality, g_Buffer);
     
     // Release frame immediately after usage to unblock DWM
     g_Capture->ReleaseCurrentFrame();
 
-    if (FAILED(hr)) return -3; // Encode failed
+    if (FAILED(hr))
+    {
+        if (coinit == S_OK || coinit == S_FALSE) CoUninitialize();
+        return -3; // Encode failed
+    }
     
     *outData = g_Buffer.data();
     *outSize = (int)g_Buffer.size();
 
+    if (coinit == S_OK || coinit == S_FALSE) CoUninitialize();
     return 1; // Success
 }
 

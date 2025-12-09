@@ -62,10 +62,21 @@ public partial class RemoteViewWindow : Window
     {
         DebugInfo.Text = $"Connecting to {_info.IP}:{_info.Port}...";
         _clientService = new ClientService();
-        _clientService.Reconnecting += () => Dispatcher.Invoke(() => DebugInfo.Text = "Reconnecting...");
-        _clientService.Reconnected += () => Dispatcher.Invoke(() => DebugInfo.Text = "Connected");
+        _clientService.Reconnecting += () => Dispatcher.Invoke(() =>
+        {
+            ReconnectingOverlay.Visibility = Visibility.Visible;
+            DebugInfo.Text = "Reconnecting..."; // Keep for logging/compatibility
+        });
+
+        _clientService.Reconnected += () => Dispatcher.Invoke(() =>
+        {
+            ReconnectingOverlay.Visibility = Visibility.Collapsed;
+            DebugInfo.Text = "Connected";
+        });
+
         _clientService.Disconnected += () => Dispatcher.Invoke(() =>
         {
+            ReconnectingOverlay.Visibility = Visibility.Collapsed; // Just in case
             DebugInfo.Text = "Disconnected";
             Close();
         });
