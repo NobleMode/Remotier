@@ -56,26 +56,44 @@ public partial class RemoteViewWindow : Window
         }
     }
 
+    private long _lastBytesReceived = 0;
+
     private async void RemoteViewWindow_Loaded(object sender, RoutedEventArgs e)
     {
         DebugInfo.Text = $"Connecting to {_info.IP}:{_info.Port}...";
         _clientService = new ClientService();
+        _clientService.Reconnecting += () => Dispatcher.Invoke(() => DebugInfo.Text = "Reconnecting...");
+        _clientService.Reconnected += () => Dispatcher.Invoke(() => DebugInfo.Text = "Connected");
+        _clientService.Disconnected += () => Dispatcher.Invoke(() =>
+        {
+            DebugInfo.Text = "Disconnected";
+            Close();
+        });
 
         _clientService.OnFrameReady += (img) => Dispatcher.Invoke(() =>
         {
             ScreenImage.Source = img;
             _frameCount++;
-            if ((DateTime.Now - _lastUpdate).TotalSeconds >= 1)
+            var now = DateTime.Now;
+            var timeDiff = (now - _lastUpdate).TotalSeconds;
+            if (timeDiff >= 1)
             {
-                StatsText.Text = $"FPS: {_frameCount} | Resolution: {img.PixelWidth}x{img.PixelHeight}";
+                long currentBytes = _clientService.TotalBytesReceived;
+                long bytesDiff = currentBytes - _lastBytesReceived;
+                double mbps = (bytesDiff / 1024.0 / 1024.0) / timeDiff;
+
+                StatsText.Text = $"FPS: {_frameCount} | Res: {img.PixelWidth}x{img.PixelHeight} | {mbps:F2} MB/s";
+
                 _frameCount = 0;
-                _lastUpdate = DateTime.Now;
+                _lastUpdate = now;
+                _lastBytesReceived = currentBytes;
             }
         });
 
         try
         {
             await _clientService.ConnectAsync(_info.IP, _info.Port);
+            DebugInfo.Text = "Connected";
 
             // Send initial resolution immediately after connection
             _clientService.SendInput(new ControlPacket

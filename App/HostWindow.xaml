@@ -35,6 +35,14 @@
             <StackPanel Grid.Column="0">
                 <TextBlock Text="SESSION SETTINGS"  FontWeight="Bold" Margin="0,0,0,10" Foreground="{StaticResource AccentBrush}"/>
                 
+                <TextBlock Text="Performance Preset" Margin="0,5,0,2"/>
+                <ComboBox x:Name="PresetCombo" SelectionChanged="PresetCombo_SelectionChanged">
+                    <ComboBoxItem Content="Speed (Low Latency)" Tag="Speed"/>
+                    <ComboBoxItem Content="Balanced (Default)" Tag="Balanced" IsSelected="True"/>
+                    <ComboBoxItem Content="Quality (High Res)" Tag="Quality"/>
+                    <ComboBoxItem Content="Custom" Tag="Custom"/>
+                </ComboBox>
+
                 <TextBlock Text="Monitor Source" Margin="0,5,0,2"/>
                 <ComboBox x:Name="MonitorCombo" SelectionChanged="MonitorCombo_SelectionChanged"/>
 

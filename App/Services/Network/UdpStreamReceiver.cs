@@ -23,6 +23,8 @@ public class UdpStreamReceiver : IDisposable
         public DateTime Timestamp;
     }
 
+    public long TotalBytesReceived { get; private set; }
+
     public void Start(int port)
     {
         _udpClient = new UdpClient(port);
@@ -37,6 +39,7 @@ public class UdpStreamReceiver : IDisposable
             try
             {
                 var result = await _udpClient.ReceiveAsync();
+                TotalBytesReceived += result.Buffer.Length;
                 ProcessPacket(result.Buffer);
             }
             catch (Exception ex)

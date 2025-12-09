@@ -149,6 +149,8 @@ namespace Remotier
             // Already handled
         }
 
+        private bool _isApplyingPreset = false;
+
         private void MonitorCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (IsLoaded) RestartService();
@@ -156,6 +158,11 @@ namespace Remotier
 
         private void FpsCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (_isApplyingPreset) return;
+
+            // If user changes FPS manually, set preset to Custom
+            SetPresetToCustom();
+
             if (IsLoaded) RestartService();
         }
 
@@ -164,6 +171,81 @@ namespace Remotier
             if (_hostService != null)
             {
                 _hostService.UpdateSettings((int)e.NewValue);
+            }
+
+            if (!_isApplyingPreset && IsLoaded)
+            {
+                SetPresetToCustom();
+            }
+        }
+
+        private void PresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (PresetCombo.SelectedItem is ComboBoxItem item && item.Tag is string tag)
+            {
+                ApplyPreset(tag);
+            }
+        }
+
+        private void ApplyPreset(string tag)
+        {
+            _isApplyingPreset = true;
+            try
+            {
+                switch (tag)
+                {
+                    case "Speed":
+                        SetFps(60);
+                        QualitySlider.Value = 50;
+                        break;
+                    case "Balanced":
+                        SetFps(60);
+                        QualitySlider.Value = 75;
+                        break;
+                    case "Quality":
+                        SetFps(60);
+                        QualitySlider.Value = 90;
+                        break;
+                    case "Custom":
+                        // Do nothing, keep current
+                        break;
+                }
+            }
+            finally
+            {
+                _isApplyingPreset = false;
+            }
+
+            // If we changed settings, service needs restart or update
+            // QualitySlider updates service live. FPS change triggers RestartService via SelectionChanged if we weren't guarding? 
+            // We are guarding FpsCombo_SelectionChanged with _isApplyingPreset so it won't restart.
+            // We should restart if FPS changed.
+            // Actually, QualitySlider update is live, but FPS needs restart.
+            if (IsLoaded && tag != "Custom") RestartService();
+        }
+
+        private void SetFps(int fps)
+        {
+            foreach (ComboBoxItem item in FpsCombo.Items)
+            {
+                if (item.Tag.ToString() == fps.ToString())
+                {
+                    FpsCombo.SelectedItem = item;
+                    break;
+                }
+            }
+        }
+
+        private void SetPresetToCustom()
+        {
+            if (PresetCombo == null) return;
+            foreach (ComboBoxItem item in PresetCombo.Items)
+            {
+                if (item.Tag.ToString() == "Custom")
+                {
+                    PresetCombo.SelectedItem = item;
+                    break;
+                }
             }
         }
 

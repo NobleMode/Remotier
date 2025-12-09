@@ -11,7 +11,7 @@
   - [x] Connect to host
   - [x] Display remote stream
   - [x] Windowed Mode by Default (Toggleable)
-  - [ ] Send mouse and keyboard input (Implemented but untested)
+  - [x] Send mouse and keyboard input
 
 - [x] **Screen Capture**
   - [x] DXGI Desktop Duplication
@@ -23,10 +23,10 @@
   - [x] TCP control channel
   - [x] Frame compression (JPEG)
 
-- **Input Control** (Untested)
-  - Mouse movement, click, scroll
-  - Keyboard press/release
-  - Optional relative input mode
+- [x] **Input Control**
+  - [x] Mouse movement, click, scroll
+  - [x] Keyboard press/release
+  - [ ] Optional relative input mode
 
 ---
 
@@ -39,6 +39,7 @@
 - [x] FPS options (30/60/120)
 - [ ] Bandwidth estimation
 - [ ] Auto-latency correction
+- [x] Smart Frame Pacing (Host side)
 
 ---
 
@@ -78,7 +79,7 @@
 - [ ] Port forwarding helper
 - [ ] LAN discovery via broadcast
 - [ ] Relay server fallback
-- [x] Auto-reconnect on drop (Basic handling)
+- [ ] Auto-reconnect on drop
 - [ ] Packet chunking and jitter buffer (Basic chunking implemented)
 
 ---
