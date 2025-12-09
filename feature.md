@@ -81,6 +81,7 @@
 - [ ] Relay server fallback
 - [x] Auto-reconnect on drop
 - [ ] Packet chunking and jitter buffer (Basic chunking implemented)
+- [ ] Auto discovery of host (Dont know if should be in menu also, or has to be in host mode)
 
 ---
 
@@ -90,6 +91,7 @@
 - [ ] Tray minimization
 - [ ] Logging system
 - [ ] Crash reporting
+- [ ] Auto discovery of host
 
 ---
 

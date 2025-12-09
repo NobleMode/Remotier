@@ -2,6 +2,9 @@ using System;
 using System.Drawing;
 using System.Windows.Media.Imaging;
 using System.Threading.Tasks;
+using System.Threading;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using Remotier.Services.Network;
 using Remotier.Services.Utils;
 
@@ -22,20 +25,65 @@ public class ClientService : IDisposable
     private bool _isReconnecting;
     private bool _intentionalDisconnect;
 
+    // Auto-Latency Correction
+    private BlockingCollection<byte[]>? _frameQueue;
+    private CancellationTokenSource? _frameProcessingCts;
+    private Task? _frameProcessingTask;
+
     public async Task ConnectAsync(string ip, int port)
     {
         _lastIp = ip;
         _lastPort = port;
         _intentionalDisconnect = false;
 
+        StartFrameProcessing();
+
         await InitializeConnection(ip, port);
+    }
+
+    private void StartFrameProcessing()
+    {
+        if (_frameProcessingTask != null && !_frameProcessingTask.IsCompleted) return;
+
+        _frameQueue = new BlockingCollection<byte[]>(boundedCapacity: 2); // Small buffer to keep latency low
+        _frameProcessingCts = new CancellationTokenSource();
+        _frameProcessingTask = Task.Run(ProcessFrames, _frameProcessingCts.Token);
+    }
+
+    private void ProcessFrames()
+    {
+        if (_frameQueue == null || _frameProcessingCts == null) return;
+
+        try
+        {
+            foreach (var data in _frameQueue.GetConsumingEnumerable(_frameProcessingCts.Token))
+            {
+                // Decompress
+                using var bitmap = CompressionService.Decompress(data);
+                if (bitmap != null)
+                {
+                    // Convert System.Drawing.Bitmap to WPF BitmapImage
+                    var image = ScreenUtils.BitmapToImageSource(bitmap);
+                    if (image != null)
+                    {
+                        image.Freeze(); // Make it cross-thread accessible
+                        OnFrameReady?.Invoke(image);
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Frame Processing Error: {ex.Message}");
+        }
     }
 
     private async Task InitializeConnection(string? ip, int port)
     {
         if (string.IsNullOrEmpty(ip)) throw new ArgumentNullException(nameof(ip));
         // Cleanup existing if any (e.g. during reconnect)
-        DisposeResources();
+        DisposeResources(false); // Don't stop processing loop on reconnect
 
         _receiver = new UdpStreamReceiver();
         _receiver.OnFrameReceived += OnFrameReceived;
@@ -55,7 +103,7 @@ public class ClientService : IDisposable
         catch
         {
             // If initial connect fails, rethrow so UI knows
-            DisposeResources();
+            DisposeResources(true);
             throw;
         }
     }
@@ -97,18 +145,18 @@ public class ClientService : IDisposable
 
     private void OnFrameReceived(byte[] data)
     {
-        // Decompress
-        using var bitmap = CompressionService.Decompress(data);
-        if (bitmap != null)
+        if (_frameQueue == null || _frameQueue.IsAddingCompleted) return;
+
+        // Auto-Latency Correction:
+        // If the queue is becoming full, it means the consumer (decoder) is slower than the producer (network).
+        // We drop the oldest frames to ensure we always processing current data (Live).
+        // Since Capacity is 2, if count is >=1 or full, we try to make space.
+        while (_frameQueue.Count >= 1)
         {
-            // Convert System.Drawing.Bitmap to WPF BitmapImage
-            var image = ScreenUtils.BitmapToImageSource(bitmap);
-            if (image != null)
-            {
-                image.Freeze(); // Make it cross-thread accessible
-                OnFrameReady?.Invoke(image);
-            }
+            _frameQueue.TryTake(out _);
         }
+
+        _frameQueue.TryAdd(data);
     }
 
     public long TotalBytesReceived => _receiver?.TotalBytesReceived ?? 0;
@@ -118,7 +166,7 @@ public class ClientService : IDisposable
         _tcpClient?.SendControl(packet);
     }
 
-    private void DisposeResources()
+    private void DisposeResources(bool fullStop = false)
     {
         if (_tcpClient != null)
         {
@@ -128,11 +176,18 @@ public class ClientService : IDisposable
         }
         _receiver?.Dispose();
         _receiver = null;
+
+        if (fullStop)
+        {
+            _frameProcessingCts?.Cancel();
+            _frameQueue?.CompleteAdding();
+            // Maybe wait? but we are on UI thread usually or async.
+        }
     }
 
     public void Dispose()
     {
         _intentionalDisconnect = true;
-        DisposeResources();
+        DisposeResources(true);
     }
 }
