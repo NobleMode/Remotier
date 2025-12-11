@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialIcons="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
         xmlns:tb="http://www.hardcodet.net/taskbar"
-        Title="Remotier Host" Height="500" Width="400"
+        Title="Remotier Host" Height="450" Width="600"
+        ResizeMode="CanResize"
         WindowStartupLocation="CenterScreen"
         Background="{StaticResource BackgroundBrush}"
         StateChanged="Window_StateChanged"
@@ -38,18 +39,35 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,5">
                 <materialIcons:MaterialIcon Kind="ServerNetwork" Width="24" Height="24" Foreground="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
                 <TextBlock Text="HOSTING SESSION" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                <Button Margin="20,0,0,0" Width="24" Height="24" Background="Transparent" BorderThickness="0" Click="Settings_Click">
+                <Button Margin="20,0,0,0" Width="24" Height="24" Background="Transparent" BorderThickness="0" Click="Settings_Click" Cursor="Hand">
                     <Button.Content>
                         <materialIcons:MaterialIcon Kind="Cog" Width="20" Height="20" Foreground="#666666"/>
                     </Button.Content>
                 </Button>
             </StackPanel>
             
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
                  <TextBlock Text="IP: " Foreground="#888888"/>
                  <TextBlock x:Name="IpText" Text="127.0.0.1" Foreground="White" FontWeight="Bold" Margin="0,0,10,0"/>
-                 <Button Content="Copy" Padding="5,0" Height="18" FontSize="10" Click="CopyIp_Click" Background="#333333" Foreground="White" BorderThickness="0"/>
+                 <Button Content="Copy" Padding="5,0" Height="18" FontSize="10" Click="CopyIp_Click" Background="#333333" Foreground="White" BorderThickness="0" Cursor="Hand"/>
             </StackPanel>
+
+            <Grid x:Name="SessionInfoGrid" Margin="0,15,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" HorizontalAlignment="Right" Margin="0,0,10,0">
+                    <TextBlock Text="Session ID" Foreground="#888888" FontSize="10" HorizontalAlignment="Right"/>
+                    <TextBlock x:Name="SessionIdText" Text="---" Foreground="White" FontWeight="Bold" FontSize="14" HorizontalAlignment="Right" MouseLeftButtonDown="SessionIdText_MouseLeftButtonDown" Cursor="Hand" ToolTip="Click to Copy"/>
+                </StackPanel>
+                <Rectangle Grid.Column="1" Width="1" Fill="#333333" Margin="0,2"/>
+                <StackPanel Grid.Column="2" HorizontalAlignment="Left" Margin="10,0,0,0">
+                    <TextBlock Text="Session Password" Foreground="#888888" FontSize="10"/>
+                    <TextBlock x:Name="SessionPassText" Text="---" Foreground="{StaticResource AccentBrush}" FontWeight="Bold" FontSize="14" MouseLeftButtonDown="SessionPassText_MouseLeftButtonDown" Cursor="Hand" ToolTip="Click to Copy"/>
+                </StackPanel>
+            </Grid>
         </StackPanel>
 
         <!-- Settings Section -->
@@ -74,7 +92,10 @@
                     <materialIcons:MaterialIcon Kind="HighDefinition" Width="16" Height="16" Foreground="Gray" Margin="0,0,10,0" VerticalAlignment="Center"/>
                     <ComboBox Grid.Column="1" x:Name="QualitySelector" SelectionChanged="QualitySelector_SelectionChanged" Background="#444444" Foreground="White" BorderThickness="0"/>
                 </Grid>
+
+                 <CheckBox x:Name="AcceptAllCheck" Content="Auto-accept incoming connections" Foreground="White" Margin="0,5,0,0"/>
             </StackPanel>
+
         </Border>
 
         <!-- Chat / Status Section -->

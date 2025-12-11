@@ -48,8 +48,18 @@
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
             </Style>
              
-             <!-- TextBox Style -->
+            <!-- TextBox Style -->
             <Style TargetType="TextBox">
+                <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+                <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                <Setter Property="Padding" Value="5"/>
+                <Setter Property="CaretBrush" Value="{StaticResource TextBrush}"/>
+            </Style>
+
+            <!-- PasswordBox Style -->
+            <Style TargetType="PasswordBox">
                 <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
                 <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
                 <Setter Property="BorderThickness" Value="1"/>

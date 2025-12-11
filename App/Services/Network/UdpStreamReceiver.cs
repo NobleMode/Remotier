@@ -80,6 +80,13 @@ public class UdpStreamReceiver : IDisposable
 
             if (!_frameBuffer.ContainsKey(header->FrameId))
             {
+                // Security: Validate frame size before allocation to prevent DoS
+                if (header->TotalFrameSize > 50 * 1024 * 1024 || header->TotalFrameSize <= 0)
+                {
+                    Debug.WriteLine($"[Security] Dropped invalid frame size: {header->TotalFrameSize}");
+                    return;
+                }
+
                 _frameBuffer[header->FrameId] = new ReceivedFrame
                 {
                     Data = new byte[header->TotalFrameSize],

@@ -11,15 +11,85 @@ public class TcpControlClient : IDisposable
 
     public event Action ConnectionLost;
 
-    public async Task ConnectAsync(string ip, int port)
+    public async Task ConnectAsync(string ip, int port, string accountName, string password)
     {
         _client = new TcpClient();
         await _client.ConnectAsync(ip, port);
         _stream = _client.GetStream();
+
+        // --- Auth Handshake ---
+        try
+        {
+            // 1. Read Challenge
+            int challengeSize = Marshal.SizeOf<AuthChallengePacket>();
+            byte[] challengeBytes = new byte[challengeSize];
+            await _stream.ReadExactlyAsync(challengeBytes, 0, challengeSize);
+
+            AuthChallengePacket challenge;
+            GCHandle hChallenge = GCHandle.Alloc(challengeBytes, GCHandleType.Pinned);
+            try { challenge = Marshal.PtrToStructure<AuthChallengePacket>(hChallenge.AddrOfPinnedObject()); }
+            finally { hChallenge.Free(); }
+
+            if (challenge.Type != PacketType.AuthChallenge) throw new Exception("Invalid Handshake Packet");
+
+            // 2. Compute Hash
+            // Hash(Hash(Plain) + Salt)
+            string baseHash = ComputeSha256(password);
+            string finalHash = ComputeSha256(baseHash + challenge.Salt);
+
+            // 3. Send Response
+            var response = new AuthResponsePacket
+            {
+                Type = PacketType.AuthResponse,
+                DeviceId = Environment.MachineName, // Use MachineName as ID for now
+                DeviceName = Environment.MachineName,
+                AccountName = accountName ?? "",
+                PasswordHash = finalHash
+            };
+
+            int respSize = Marshal.SizeOf(response);
+            byte[] respBytes = new byte[respSize];
+            IntPtr pResp = Marshal.AllocHGlobal(respSize);
+            Marshal.StructureToPtr(response, pResp, false);
+            Marshal.Copy(pResp, respBytes, 0, respSize);
+            Marshal.FreeHGlobal(pResp);
+
+            await _stream.WriteAsync(respBytes, 0, respBytes.Length);
+
+            // 4. Read Result
+            int resultSize = Marshal.SizeOf<AuthResultPacket>();
+            byte[] resultBytes = new byte[resultSize];
+            await _stream.ReadExactlyAsync(resultBytes, 0, resultSize);
+
+            AuthResultPacket result;
+            GCHandle hResult = GCHandle.Alloc(resultBytes, GCHandleType.Pinned);
+            try { result = Marshal.PtrToStructure<AuthResultPacket>(hResult.AddrOfPinnedObject()); }
+            finally { hResult.Free(); }
+
+            if (!result.IsAuthenticated) throw new Exception("Authentication Failed");
+        }
+        catch (Exception ex)
+        {
+            _client.Close();
+            throw new Exception($"Auth Error: {ex.Message}");
+        }
+        // --- End Handshake ---
+
         _isConnected = true;
 
         // Start a background read loop to detect disconnection (server closed socket)
         _ = Task.Run(ReadLoop);
+    }
+
+    private static string ComputeSha256(string input)
+    {
+        using (var sha256 = System.Security.Cryptography.SHA256.Create())
+        {
+            byte[] bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(input));
+            System.Text.StringBuilder builder = new System.Text.StringBuilder();
+            for (int i = 0; i < bytes.Length; i++) builder.Append(bytes[i].ToString("x2"));
+            return builder.ToString();
+        }
     }
 
     public event Action<string> ChatReceived = delegate { };

@@ -4,4 +4,6 @@ public class ConnectionInfo
 {
     public string IP { get; set; } = string.Empty;
     public int Port { get; set; } = 5000;
+    public string AccountName { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
 }

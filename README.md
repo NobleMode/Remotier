@@ -2,7 +2,11 @@
 
 **Remotier** is a high-performance, low-latency Remote Desktop application designed for 1:1 sessions on Windows. It combines a **native C++ core** for efficient DirectX screen capture with a **modern WPF UI** for a seamless user experience.
 
-![Icon](App/Resources/remote.ico)
+![Icon](App/Assets/icon.svg)
+
+> [!CAUTION]
+> **Security Notice**: This application is designed for **LOCAL LAN USE ONLY**. It acts as an open server. Do not expose the Host port to the public Internet without VPN/SSH tunneling.
+
 
 ## Key Features
 

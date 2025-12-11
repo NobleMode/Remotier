@@ -11,6 +11,9 @@ using System.Net.Sockets;
 
 using System.Runtime.InteropServices;
 
+using System.Security.Cryptography;
+using System.Text;
+
 namespace Remotier.Services;
 
 public class HostService : IDisposable
@@ -26,6 +29,10 @@ public class HostService : IDisposable
     public bool IsPortMappingEnabled { get; private set; }
     public string PortMappingStatus { get; private set; } = "Disabled";
 
+    public string SessionId { get; private set; } = "";
+    public string SessionPassword { get; private set; } = "";
+    public SecuritySettings SecuritySettings { get; private set; } = new SecuritySettings();
+
     private bool _isHosting;
     private Task? _captureTask; // Made nullable
 
@@ -33,6 +40,7 @@ public class HostService : IDisposable
     public event Action<string>? ClientDisconnected;
     public event Action<double>? OnCaptureTiming; // Capture+Encode time in ms
     public event Action<int>? OnFpsUpdate;
+    public event Func<string, long, bool>? RequestFileAcceptance;
 
     // P/Invoke Definitions
     private static class NativeMethods
@@ -67,7 +75,12 @@ public class HostService : IDisposable
 
         _streamSender = new UdpStreamSender();
 
+        // Security Init
+        ReloadSettings();
+        GenerateSessionCredentials();
+
         _tcpHost = new TcpHost();
+        _tcpHost.VerifyClientAuth += VerifyAuth;
         _tcpHost.OnControlReceived += OnControlPacket;
         _tcpHost.ClientConnected += (client) =>
         {
@@ -85,6 +98,10 @@ public class HostService : IDisposable
         _discoveryService.StartBeacon(port);
 
         _tcpHost.OnChatReceived += OnChatReceived;
+        _tcpHost.OnAuthenticationFailed += (reason) =>
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() => OnAuthenticationFailed?.Invoke(reason));
+        };
 
         // Clipboard & File Transfer Integration
         _clipboardService = new ClipboardService();
@@ -94,6 +111,24 @@ public class HostService : IDisposable
         {
             Debug.WriteLine($"File Received: {path}");
             // Ideally notify UI
+        };
+
+        // Wire up security event
+        _fileTransferService.RequestFileAcceptance += (name, size) =>
+        {
+            // Bubble up to UI via HostService event
+            // We need a Synchronous mechanism. 
+            // Since HostService runs on a background thread (usually), but the UI needs to show a MessageBox.
+            // We can invoke a delegate that returns bool.
+            if (RequestFileAcceptance != null)
+            {
+                // We only support one handler (the UI)
+                foreach (Func<string, long, bool> handler in RequestFileAcceptance.GetInvocationList())
+                {
+                    return handler(name, size);
+                }
+            }
+            return false; // Default deny
         };
 
         // We need to track the current client to send data to it.
@@ -127,6 +162,11 @@ public class HostService : IDisposable
         _isHosting = true;
 
         _captureTask = Task.Run(() => CaptureLoop(fps));
+    }
+
+    public void ReloadSettings()
+    {
+        SecuritySettings = SecuritySettings.Load();
     }
 
     private async Task CaptureLoop(int fps)
@@ -230,6 +270,19 @@ public class HostService : IDisposable
         _tcpHost?.BroadcastChat(message);
     }
 
+    public void DisconnectClient()
+    {
+        if (_currentClient != null)
+        {
+            try
+            {
+                _currentClient.Close();
+                _currentClient = null;
+            }
+            catch { }
+        }
+    }
+
     public void Stop()
     {
         _isHosting = false;
@@ -301,5 +354,122 @@ public class HostService : IDisposable
     public void Dispose()
     {
         Stop();
+    }
+    public void GenerateSessionCredentials()
+    {
+        SessionId = Guid.NewGuid().ToString("N").Substring(0, 9).ToUpper().Insert(3, "-").Insert(7, "-");
+        SessionPassword = new Random().Next(0, 999999).ToString("D6");
+        // Notify UI if needed? Properties are public, UI can poll or bind? 
+        // We might need INotifyPropertyChanged or an event.
+        // For now, HostWindow just reads it on startup/refresh.
+    }
+
+    public event Action<string> OnAuthenticationFailed = delegate { };
+
+    public (bool isAuthenticated, bool isTrusted, string failureReason) VerifyAuth(string deviceId, string deviceName, string accountName, string inputHash, string salt)
+    {
+        string specificError = "Invalid Session Password";
+
+        // 1. Check Account Password (Trusted)
+        // Only attempt if Client provided an Account Name AND Host has an Account Name set.
+        if (!string.IsNullOrEmpty(SecuritySettings.AccountName) &&
+            !string.IsNullOrEmpty(accountName))
+        {
+            if (accountName == SecuritySettings.AccountName)
+            {
+                if (!string.IsNullOrEmpty(SecuritySettings.AccountPasswordHash))
+                {
+                    string expected = ComputeSha256(SecuritySettings.AccountPasswordHash + salt);
+                    if (inputHash == expected)
+                    {
+                        RegisterConnection(deviceId, deviceName, true);
+                        return (true, true, "");
+                    }
+                    // If name matches but password wrong, that's a specific error. 
+                    // But maybe they put Session Password in the password field?
+                    // Let's NOT return immediately, let's try Session Password too.
+                    specificError = "Trusted: Bad Password";
+                }
+                else
+                {
+                    specificError = "Trusted: No Host Password Set";
+                }
+            }
+            else
+            {
+                specificError = $"Account '{accountName}' not found";
+            }
+        }
+
+        // 2. Check Session Password (Guest)
+        // If they failed Trusted (or didn't provide name), try Guest.
+        // This handles the case where user puts "Session ID" in Account Name field by mistake.
+
+        string sessionBaseHash = ComputeSha256(SessionPassword);
+        string expectedSession = ComputeSha256(sessionBaseHash + salt);
+
+        if (inputHash == expectedSession)
+        {
+            RegisterConnection(deviceId, deviceName, false);
+            return (true, false, "");
+        }
+
+        // If we got here, both failed.
+
+        string debugDetails = $"[InputAcc: '{accountName}' HostAcc: '{SecuritySettings.AccountName}'] [Salt: {salt.Substring(0, 5)}...] [Recv: {(inputHash.Length > 5 ? inputHash.Substring(0, 5) : inputHash)}... Exp: {(expectedSession.Length > 5 ? expectedSession.Substring(0, 5) : expectedSession)}...]";
+
+        return (false, false, (specificError != "Invalid Session Password" ? $"{specificError} OR Invalid Session Password" : specificError) + debugDetails);
+    }
+
+    private void RegisterConnection(string deviceId, string deviceName, bool isTrusted)
+    {
+        // Update Recent
+        var recent = SecuritySettings.RecentConnections.Find(x => x.DeviceName == deviceName); // Using Name as ID for Display? 
+                                                                                               // We should store DeviceID in History too?
+                                                                                               // Let's just add new entry for now.
+        SecuritySettings.RecentConnections.RemoveAll(x => x.DeviceName == deviceName && x.IpAddress == deviceId); // Cleanup old ?
+        SecuritySettings.RecentConnections.Insert(0, new ConnectionHistory
+        {
+            DeviceName = deviceName,
+            IpAddress = "Unknown", // We don't have IP easily here yet, passed from TCP?
+            ConnectedAt = DateTime.Now
+        });
+        if (SecuritySettings.RecentConnections.Count > 10) SecuritySettings.RecentConnections.RemoveAt(10);
+
+        // Update Trusted
+        if (isTrusted)
+        {
+            var existing = SecuritySettings.TrustedDevices.Find(d => d.DeviceId == deviceId);
+            if (existing == null)
+            {
+                SecuritySettings.TrustedDevices.Add(new DeviceInfo
+                {
+                    DeviceId = deviceId,
+                    DeviceName = deviceName,
+                    LastSeen = DateTime.Now
+                });
+            }
+            else
+            {
+                existing.LastSeen = DateTime.Now;
+                existing.DeviceName = deviceName;
+            }
+        }
+
+        SecuritySettings.Save();
+    }
+
+    public static string ComputeSha256(string input)
+    {
+        using (SHA256 sha256 = SHA256.Create())
+        {
+            byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(input));
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                builder.Append(bytes[i].ToString("x2"));
+            }
+            return builder.ToString();
+        }
     }
 }

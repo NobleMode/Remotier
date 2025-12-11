@@ -48,12 +48,119 @@ public class TcpHost : IDisposable
         }
     }
 
+    public event Action<string> OnAuthenticationFailed = delegate { };
+
+    public event Func<string, string, string, string, string, (bool, bool, string)>? VerifyClientAuth;
+
     private async Task HandleClient(TcpClient client)
     {
-        ClientConnected?.Invoke(client);
         using (client)
         using (var stream = client.GetStream())
         {
+            // --- Handshake Start ---
+            try
+            {
+                // 1. Send Challenge
+                string salt = Guid.NewGuid().ToString("N");
+                var challenge = new AuthChallengePacket
+                {
+                    Type = PacketType.AuthChallenge,
+                    Salt = salt
+                };
+
+                int challengeSize = Marshal.SizeOf(challenge);
+                byte[] challengeBytes = new byte[challengeSize];
+
+                IntPtr pChallenge = Marshal.AllocHGlobal(challengeSize);
+                Marshal.StructureToPtr(challenge, pChallenge, false);
+                Marshal.Copy(pChallenge, challengeBytes, 0, challengeSize);
+                Marshal.FreeHGlobal(pChallenge);
+
+                await stream.WriteAsync(challengeBytes, 0, challengeBytes.Length);
+
+                // 2. Receive Response
+                int responseSize = Marshal.SizeOf<AuthResponsePacket>();
+                byte[] responseBytes = new byte[responseSize];
+
+                // Read exact size
+                await stream.ReadExactlyAsync(responseBytes, 0, responseSize);
+
+                AuthResponsePacket response;
+                GCHandle handle = GCHandle.Alloc(responseBytes, GCHandleType.Pinned);
+                try
+                {
+                    response = Marshal.PtrToStructure<AuthResponsePacket>(handle.AddrOfPinnedObject());
+                }
+                finally
+                {
+                    handle.Free();
+                }
+
+                if (response.Type != PacketType.AuthResponse)
+                {
+                    Debug.WriteLine("Handshake Failed: Invalid Response Type");
+                    return;
+                }
+
+                // 3. Verify
+                bool isAuth = false;
+                bool isTrusted = false;
+                string failReason = "Unknown Error";
+
+                if (VerifyClientAuth != null)
+                {
+                    // Invoke delegate
+                    foreach (Func<string, string, string, string, string, (bool, bool, string)> handler in VerifyClientAuth.GetInvocationList())
+                    {
+                        (isAuth, isTrusted, failReason) = handler(response.DeviceId, response.DeviceName, response.AccountName, response.PasswordHash, salt);
+                        if (isAuth) break;
+                    }
+                }
+
+                // 4. Send Result
+                var result = new AuthResultPacket
+                {
+                    Type = PacketType.AuthResult,
+                    IsAuthenticated = isAuth,
+                    IsTrusted = isTrusted
+                };
+
+                int resultSize = Marshal.SizeOf(result);
+                byte[] resultBytes = new byte[resultSize];
+                IntPtr pResult = Marshal.AllocHGlobal(resultSize);
+                Marshal.StructureToPtr(result, pResult, false);
+                Marshal.Copy(pResult, resultBytes, 0, resultSize);
+                Marshal.FreeHGlobal(pResult);
+
+                await stream.WriteAsync(resultBytes, 0, resultBytes.Length);
+
+                if (!isAuth)
+                {
+                    Debug.WriteLine($"Handshake Failed: {failReason}");
+                    OnAuthenticationFailed?.Invoke($"Auth Failed ({client.Client.RemoteEndPoint}): {failReason}");
+                    return;
+                }
+
+                // Handshake Success
+                // Proceed to Main Loop but we need to notify that client is "fully connected" (Authenticated)
+                // We can pass isTrusted to ClientConnected?
+                // The event signature is Action<TcpClient>.
+                // Maybe we can attach IsTrusted to the client tag or handle it in HostService via the Verification step (which we already did).
+                // HostService.VerifyAuth ALREADY calls RegisterConnection etc.
+                // But HostService needs to know when the socket is actually ready to be added to _currentClient?
+                // The Main Loop fires ClientConnected?.Invoke(client).
+                // We should only fire this IF auth success.
+                // So strictly:
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Handshake Exception: {ex.Message}");
+                return;
+            }
+            // --- Handshake End ---
+
+            ClientConnected?.Invoke(client); // Notify ONLY after success
+
             byte[] headerBuffer = new byte[1]; // Read Type
 
             while (client.Connected && _isRunning && _client == client)

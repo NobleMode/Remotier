@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Collections.ObjectModel;
 using Remotier.Models;
+using System.Windows.Input;
 using Remotier.Services;
 using Remotier.Services.Network;
 
@@ -29,7 +30,7 @@ namespace Remotier
             RecentList.ItemsSource = _recentConnections;
         }
 
-        private void Connect_Click(object sender, RoutedEventArgs e)
+        private async void Connect_Click(object sender, RoutedEventArgs e)
         {
             string input = IpInput.Text.Trim();
             if (string.IsNullOrWhiteSpace(input)) return;
@@ -52,10 +53,46 @@ namespace Remotier
             // Save to recents
             ConfigService.SaveConnection(input);
 
-            var remoteView = new RemoteViewWindow(new ConnectionInfo { IP = ip, Port = port });
-            remoteView.Closed += (s, args) => this.Close(); // Close ConnectWindow when RemoteView closes
-            remoteView.Show();
-            this.Hide();
+            var info = new ConnectionInfo
+            {
+                IP = ip,
+                Port = port,
+                AccountName = AccountNameInput.Text.Trim(),
+                Password = ShowPasswordToggle.IsChecked == true ? PasswordVisibleInput.Text : PasswordInput.Password
+            };
+
+            // Verify Connection BEFORE opening the window
+            var btn = sender as Button;
+            if (btn != null) btn.IsEnabled = false;
+            Mouse.OverrideCursor = Cursors.Wait;
+
+            try
+            {
+                var clientService = new ClientService();
+                await clientService.ConnectAsync(info.IP, info.Port, info.AccountName, info.Password);
+
+                // If we get here, Auth Success
+                var remoteView = new RemoteViewWindow(info, clientService);
+                remoteView.Closed += (s, args) => this.Close();
+                remoteView.Show();
+                this.Hide();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Connection Failed: {ex.Message}", "Connection Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                if (btn != null) btn.IsEnabled = true;
+                Mouse.OverrideCursor = null;
+            }
+        }
+
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            var settings = new SettingWindow();
+            settings.Owner = this;
+            settings.ShowDialog();
         }
 
         private void RecentList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -83,6 +120,20 @@ namespace Remotier
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private void ShowPassword_Checked(object sender, RoutedEventArgs e)
+        {
+            PasswordVisibleInput.Text = PasswordInput.Password;
+            PasswordVisibleInput.Visibility = Visibility.Visible;
+            PasswordInput.Visibility = Visibility.Collapsed;
+        }
+
+        private void ShowPassword_Unchecked(object sender, RoutedEventArgs e)
+        {
+            PasswordInput.Password = PasswordVisibleInput.Text;
+            PasswordInput.Visibility = Visibility.Visible;
+            PasswordVisibleInput.Visibility = Visibility.Collapsed;
         }
     }
 }

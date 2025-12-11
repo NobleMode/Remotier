@@ -15,17 +15,42 @@ public class FileTransferService
     private string _tempPath;
 
     // Events
-    public event Action<string, long> TransferStarted = delegate { };
-    public event Action<double> TransferProgress = delegate { }; // 0.0 to 1.0
-    public event Action<string> TransferCompleted = delegate { };
-    public event Action<string> TransferFailed = delegate { };
-
-    public bool IsReceiving => _fileStream != null;
+    public event Func<string, long, bool>? RequestFileAcceptance;
+    public event Action<string, long>? TransferStarted;
+    public event Action<double>? TransferProgress;
+    public event Action<string>? TransferCompleted;
+    public event Action<string>? TransferFailed;
 
     public void StartReceiving(string fileName, long fileSize)
     {
         try
         {
+            // Security: Request confirmation from UI
+            bool accepted = false;
+            if (RequestFileAcceptance != null)
+            {
+                // Invoke all subscribers, if any return true, we accept? 
+                // Or just the first one. Usually single subscriber in this architecture.
+                foreach (Func<string, long, bool> handler in RequestFileAcceptance.GetInvocationList())
+                {
+                    if (handler(fileName, fileSize))
+                    {
+                        accepted = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!accepted)
+            {
+                // Logic to cancel/reject?
+                // Just do nothing. The Sender keeps sending, we just ignore chunks.
+                // Or better, set _fileStream to null so chunks are dropped.
+                TransferFailed?.Invoke("Transfer Rejected by User");
+                _fileStream = null;
+                return;
+            }
+
             if (_fileStream != null)
             {
                 _fileStream.Dispose();
@@ -37,6 +62,8 @@ public class FileTransferService
             _receivedBytes = 0;
 
             string downloadsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            Directory.CreateDirectory(downloadsPath); // Ensure exists
+
             // Ensure unique name
             string safeName = Path.GetFileName(fileName);
             string fullPath = Path.Combine(downloadsPath, safeName);

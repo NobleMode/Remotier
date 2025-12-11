@@ -25,6 +25,8 @@ public class ClientService : IDisposable
 
     private string? _lastIp;
     private int _lastPort;
+    private string _lastAccountName = "";
+    private string _lastPassword = "";
     private bool _isReconnecting;
     private bool _intentionalDisconnect;
 
@@ -33,10 +35,12 @@ public class ClientService : IDisposable
     private CancellationTokenSource? _frameProcessingCts;
     private Task? _frameProcessingTask;
 
-    public async Task ConnectAsync(string ip, int port)
+    public async Task ConnectAsync(string ip, int port, string accountName = "", string password = "")
     {
         _lastIp = ip;
         _lastPort = port;
+        _lastAccountName = accountName;
+        _lastPassword = password;
         _intentionalDisconnect = false;
 
         StartFrameProcessing();
@@ -119,7 +123,7 @@ public class ClientService : IDisposable
 
         try
         {
-            await _tcpClient.ConnectAsync(ip, port);
+            await _tcpClient.ConnectAsync(ip, port, _lastAccountName, _lastPassword);
 
             // Send Connect Packet
             var packet = new ControlPacket { Type = PacketType.Connect, Data = port };

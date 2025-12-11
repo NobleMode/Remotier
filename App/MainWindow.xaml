@@ -42,6 +42,9 @@
         </Grid.RowDefinitions>
 
         <!-- Header -->
+        <Button HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10" Background="Transparent" BorderThickness="0" Click="Settings_Click" Cursor="Hand">
+            <materialIcons:MaterialIcon Kind="Cog" Width="24" Height="24" Foreground="{StaticResource AccentBrush}"/>
+        </Button>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,40,0,20">
              <materialIcons:MaterialIcon Kind="RemoteDesktop" Width="40" Height="40" Foreground="{StaticResource AccentBrush}" Margin="0,0,15,0"/>
              <StackPanel VerticalAlignment="Center">

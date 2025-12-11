@@ -12,10 +12,11 @@ public partial class RemoteViewWindow : Window
     private ClientService _clientService;
     private ConnectionInfo _info;
 
-    public RemoteViewWindow(ConnectionInfo info)
+    public RemoteViewWindow(ConnectionInfo info, ClientService clientService = null)
     {
         InitializeComponent();
         _info = info;
+        _clientService = clientService; // Use provided service or null
         Loaded += RemoteViewWindow_Loaded;
         Closing += RemoteViewWindow_Closing;
     }
@@ -60,12 +61,21 @@ public partial class RemoteViewWindow : Window
 
     private async void RemoteViewWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        DebugInfo.Text = $"Connecting to {_info.IP}:{_info.Port}...";
-        _clientService = new ClientService();
+        DebugInfo.Text = $"Connected to {_info.IP}:{_info.Port}\n(As: '{_info.AccountName}')";
+
+        // If service was strictly passed, it's already connected.
+        // If null, we create and connect (Legacy/Direct mode)
+        bool isNewConnection = false;
+        if (_clientService == null)
+        {
+            _clientService = new ClientService();
+            isNewConnection = true;
+        }
+
         _clientService.Reconnecting += () => Dispatcher.Invoke(() =>
         {
             ReconnectingOverlay.Visibility = Visibility.Visible;
-            DebugInfo.Text = "Reconnecting..."; // Keep for logging/compatibility
+            DebugInfo.Text = "Reconnecting...";
         });
 
         _clientService.Reconnected += () => Dispatcher.Invoke(() =>
@@ -76,7 +86,7 @@ public partial class RemoteViewWindow : Window
 
         _clientService.Disconnected += () => Dispatcher.Invoke(() =>
         {
-            ReconnectingOverlay.Visibility = Visibility.Collapsed; // Just in case
+            ReconnectingOverlay.Visibility = Visibility.Collapsed;
             DebugInfo.Text = "Disconnected";
             Close();
         });
@@ -113,8 +123,12 @@ public partial class RemoteViewWindow : Window
         {
             _clientService.ChatReceived += OnChatReceived;
 
-            await _clientService.ConnectAsync(_info.IP, _info.Port);
-            DebugInfo.Text = "Connected";
+            if (isNewConnection)
+            {
+                DebugInfo.Text = $"Connecting to {_info.IP}:{_info.Port}...\n(As: '{_info.AccountName}')";
+                await _clientService.ConnectAsync(_info.IP, _info.Port, _info.AccountName, _info.Password);
+                DebugInfo.Text = "Connected";
+            }
 
             // Send initial resolution immediately after connection
             _clientService.SendInput(new ControlPacket

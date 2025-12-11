@@ -24,4 +24,11 @@ public partial class MainWindow : Window
         connectWindow.Show();
         this.Hide();
     }
+
+    private void Settings_Click(object sender, RoutedEventArgs e)
+    {
+        var settingsWindow = new SettingWindow();
+        settingsWindow.Owner = this;
+        settingsWindow.ShowDialog();
+    }
 }

@@ -68,6 +68,7 @@ namespace Remotier
             _hostService?.Stop();
             _hostService = new HostService();
 
+            // Subscribe to events
             _hostService.ClientConnected += OnClientConnected;
             _hostService.ClientDisconnected += OnClientDisconnected;
             _hostService.ChatReceived += OnChatReceived;
@@ -75,6 +76,26 @@ namespace Remotier
             {
                 HostStats.Text = $"Enc: {ms:F1}ms";
             });
+            _hostService.OnFpsUpdate += (fps) => Dispatcher.Invoke(() => HostStats.Text = $"{fps} FPS");
+            _hostService.OnAuthenticationFailed += (reason) =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    StatusText.Text = "Authentication Failed!";
+                    _chatMessages.Add($"[System] {reason}");
+                });
+            };
+
+            // Handle File Transfer Security
+            _hostService.RequestFileAcceptance += (name, size) =>
+            {
+                return Dispatcher.Invoke(() =>
+                {
+                    string sizeStr = size > 1024 * 1024 ? $"{size / 1024 / 1024} MB" : $"{size / 1024} KB";
+                    var result = MessageBox.Show($"Incoming File Request:\n\nName: {name}\nSize: {sizeStr}\n\nDo you want to accept and download this file?", "File Transfer Request", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    return result == MessageBoxResult.Yes;
+                });
+            };
 
             try
             {
@@ -104,6 +125,10 @@ namespace Remotier
                 if (IpText != null) IpText.Text = localIp;
 
                 _hostService.Start(5000, options, monitorIndex, fps);
+
+                SessionIdText.Text = _hostService.SessionId;
+                SessionPassText.Text = _hostService.SessionPassword;
+
                 StatusText.Text = ($"Hosting on {localIp}:5000. Waiting for client...");
             }
             catch (Exception ex)
@@ -123,10 +148,33 @@ namespace Remotier
         {
             Dispatcher.Invoke(() =>
             {
-                StatusText.Text = $"Connected to Client ({endpoint})";
-                ChatInput.IsEnabled = true;
-                SendBtn.IsEnabled = true;
-                _chatMessages.Add("[System]: Client Connected");
+                if (AcceptAllCheck.IsChecked == true)
+                {
+                    StatusText.Text = $"Connected to Client ({endpoint})";
+                    ChatInput.IsEnabled = true;
+                    SendBtn.IsEnabled = true;
+                    _chatMessages.Add("[System]: Client Connected (Auto-Accepted)");
+                    SessionInfoGrid.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                // Security: Prompt user to accept connection
+                var result = MessageBox.Show($"Allow connection from {endpoint}?\n\nThis client will be able to view your screen and control input.", "Connection Request", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    StatusText.Text = $"Connected to Client ({endpoint})";
+                    ChatInput.IsEnabled = true;
+                    SendBtn.IsEnabled = true;
+                    _chatMessages.Add("[System]: Client Connected");
+                    SessionInfoGrid.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    _hostService.DisconnectClient();
+                    StatusText.Text = "Connection Denied. Waiting...";
+                    _chatMessages.Add($"[System]: Connection from {endpoint} denied.");
+                }
             });
         }
 
@@ -138,6 +186,7 @@ namespace Remotier
                 ChatInput.IsEnabled = false;
                 SendBtn.IsEnabled = false;
                 _chatMessages.Clear();
+                SessionInfoGrid.Visibility = Visibility.Visible;
             });
         }
 
@@ -250,6 +299,26 @@ namespace Remotier
         private void QualitySelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (IsLoaded) StartHosting();
+        }
+
+        private void SessionIdText_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(SessionIdText.Text) && _hostService != null)
+            {
+                Clipboard.SetText(SessionIdText.Text);
+                StatusText.Text = "Session ID Copied!";
+                // Reset status after short delay? 
+                // Simple feedback is enough for now.
+            }
+        }
+
+        private void SessionPassText_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            if (!string.IsNullOrEmpty(SessionPassText.Text) && _hostService != null)
+            {
+                Clipboard.SetText(SessionPassText.Text);
+                StatusText.Text = "Session Password Copied!";
+            }
         }
     }
 }
