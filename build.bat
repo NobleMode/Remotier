@@ -1,6 +1,6 @@
 @echo off
 echo Building Remotier...
-dotnet build Remotier.slnx
+msbuild Remotier.slnx -restore
 if %ERRORLEVEL% NEQ 0 (
     echo Build failed!
     pause

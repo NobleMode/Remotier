@@ -1,0 +1,64 @@
+﻿<Window x:Class="Remotier.SettingWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialIcons="clr-namespace:Material.Icons.WPF;assembly=Material.Icons.WPF"
+        Title="Remotier Settings" Height="300" Width="400"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{StaticResource BackgroundBrush}">
+    
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,20" HorizontalAlignment="Center">
+            <materialIcons:MaterialIcon Kind="Cog" Width="24" Height="24" Foreground="{StaticResource AccentBrush}" Margin="0,0,10,0"/>
+            <TextBlock Text="SETTINGS" FontSize="20" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <StackPanel Grid.Row="1">
+            
+            <!-- Network Section -->
+            <Border Background="{StaticResource SurfaceBrush}" CornerRadius="5" Padding="15">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,15">
+                        <materialIcons:MaterialIcon Kind="RouterWireless" Foreground="{StaticResource TextBrush}" Width="18" Height="18" Margin="0,0,10,0"/>
+                        <TextBlock Text="Network" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    </StackPanel>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="UPnP Port Forwarding" Foreground="{StaticResource TextBrush}" FontWeight="Bold"/>
+                            <TextBlock Text="Automatically map ports for external access." Foreground="#AAAAAA" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                        </StackPanel>
+                         <CheckBox x:Name="UpnpToggle" Click="UpnpToggle_Click" VerticalAlignment="Center" HorizontalAlignment="Right">
+                             <CheckBox.LayoutTransform>
+                                 <ScaleTransform ScaleX="1.2" ScaleY="1.2"/>
+                             </CheckBox.LayoutTransform>
+                         </CheckBox>
+                    </Grid>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                         <TextBlock Text="Status: " Foreground="#888888" FontSize="12"/>
+                         <TextBlock x:Name="UpnpStatus" Text="Disabled" Foreground="#AAAAAA" FontWeight="SemiBold" FontSize="12"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+
+        <!-- Footer -->
+        <Button Grid.Row="2" Content="Close" Click="Close_Click" 
+                Width="100" Height="35" HorizontalAlignment="Center" Margin="0,20,0,0"
+                Background="{StaticResource SurfaceBrush}" Foreground="{StaticResource TextBrush}"/>
+    </Grid>
+</Window>

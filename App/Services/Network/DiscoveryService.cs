@@ -26,7 +26,6 @@ public class DiscoveryService : IDisposable
 
     private UdpClient? _udpClient;
     private bool _isRunning;
-    private bool _isHost;
 
     public ObservableCollection<DiscoveredHost> DiscoveredHosts { get; } = new();
 
@@ -34,7 +33,6 @@ public class DiscoveryService : IDisposable
     public void StartBeacon(int port)
     {
         Stop();
-        _isHost = true;
         _isRunning = true;
         _udpClient = new UdpClient();
         _udpClient.EnableBroadcast = true;
@@ -65,7 +63,6 @@ public class DiscoveryService : IDisposable
     public void StartListening()
     {
         Stop();
-        _isHost = false;
         _isRunning = true;
 
         try
@@ -92,6 +89,7 @@ public class DiscoveryService : IDisposable
             try
             {
                 var result = await _udpClient.ReceiveAsync();
+                if (result.Buffer == null) continue;
                 string message = Encoding.UTF8.GetString(result.Buffer);
 
                 var parts = message.Split('|');

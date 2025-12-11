@@ -8,7 +8,11 @@ public enum PacketType : byte
     Connect = 0x04,
     Disconnect = 0x05,
     Settings = 0x06,
-    Chat = 0x07
+    Chat = 0x07,
+    Clipboard = 0x08,
+    FileStart = 0x09,
+    FileChunk = 0x0A,
+    FileEnd = 0x0B
 }
 
 public enum MouseAction : byte

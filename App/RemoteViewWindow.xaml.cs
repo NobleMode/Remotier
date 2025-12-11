@@ -145,6 +145,30 @@ public partial class RemoteViewWindow : Window
         OpenChatWindow();
     }
 
+    private async void SendFile_Click(object sender, RoutedEventArgs e)
+    {
+        var openFileDialog = new Microsoft.Win32.OpenFileDialog();
+        if (openFileDialog.ShowDialog() == true)
+        {
+            try
+            {
+                DebugInfo.Visibility = Visibility.Visible;
+                DebugInfo.Text = $"Sending {System.IO.Path.GetFileName(openFileDialog.FileName)}...";
+
+                await _clientService.SendFile(openFileDialog.FileName);
+
+                DebugInfo.Text = "File Sent!";
+                await Task.Delay(2000);
+                DebugInfo.Visibility = Visibility.Collapsed;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"File Send Error: {ex.Message}");
+                DebugInfo.Visibility = Visibility.Collapsed;
+            }
+        }
+    }
+
     private void OpenChatWindow()
     {
         if (_chatWindow == null || !_chatWindow.IsVisible)

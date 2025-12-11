@@ -54,8 +54,8 @@
 ---
 
 ## Advanced Features (Optional)
-- [ ] Clipboard sync (text/files)
-- [ ] File transfer
+- [-] Clipboard sync (text/files) (Testing Needed)
+- [-] File transfer (Testing Needed)
 - [x] Built-in chat (Embedded)
 - [ ] Audio streaming (Opus)
 - [ ] Session recording
@@ -77,7 +77,7 @@
 ---
 
 ## Networking
-- [ ] Port forwarding helper
+- [-] Port forwarding helper (Testing Needed)
 - [x] LAN discovery via broadcast
 - [ ] Relay server fallback
 - [x] Auto-reconnect on drop
@@ -89,7 +89,7 @@
 ## System Features
 - [ ] Wake-on-LAN support
 - [ ] Auto-start host mode on boot
-- [ ] Tray minimization
+- [-] Tray minimization (Testing Needed)
 - [ ] Logging system
 - [ ] Crash reporting
 

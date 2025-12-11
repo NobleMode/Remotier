@@ -14,6 +14,8 @@ public class ClientService : IDisposable
 {
     private UdpStreamReceiver? _receiver;
     private TcpControlClient? _tcpClient;
+    private ClipboardService? _clipboardService;
+    private FileTransferService? _fileTransferService;
 
     public event Action<BitmapImage>? OnFrameReady;
     public event Action? Reconnecting;
@@ -91,7 +93,25 @@ public class ClientService : IDisposable
 
         _tcpClient = new TcpControlClient();
         _tcpClient.ConnectionLost += OnConnectionLost;
+        _tcpClient.ConnectionLost += OnConnectionLost;
         _tcpClient.ChatReceived += (msg) => ChatReceived?.Invoke(msg);
+
+        // Clipboard & File Transfer
+        _clipboardService = new ClipboardService();
+        _clipboardService.ClipboardTextChanged += async (text) => await _tcpClient.SendClipboard(text);
+        _clipboardService.Start();
+
+        _fileTransferService = new FileTransferService();
+        _fileTransferService.TransferCompleted += (path) =>
+        {
+            // Notify UI? For now debug
+            Debug.WriteLine($"Client Received File: {path}");
+        };
+
+        _tcpClient.ClipboardReceived += (text) => _clipboardService.SetClipboardText(text);
+        _tcpClient.FileStartReceived += (name, size) => _fileTransferService.StartReceiving(name, size);
+        _tcpClient.FileChunkReceived += (chunk) => _fileTransferService.ReceiveChunk(chunk);
+        _tcpClient.FileEndReceived += () => _fileTransferService.FinishReceiving();
 
         try
         {
@@ -172,6 +192,23 @@ public class ClientService : IDisposable
         _tcpClient?.SendChat(message);
     }
 
+    public async Task SendFile(string path)
+    {
+        if (_tcpClient == null) return;
+
+        if (_fileTransferService != null)
+        {
+            var fileName = System.IO.Path.GetFileName(path);
+            var fileInfo = new System.IO.FileInfo(path);
+
+            await _tcpClient.SendFileStart(fileName, fileInfo.Length);
+
+            await _fileTransferService.SendFile(path,
+                async (chunk) => await _tcpClient.SendFileChunk(chunk),
+                async () => await _tcpClient.SendFileEnd());
+        }
+    }
+
     public event Action<string> ChatReceived = delegate { };
 
     private void DisposeResources(bool fullStop = false)
@@ -184,6 +221,10 @@ public class ClientService : IDisposable
         }
         _receiver?.Dispose();
         _receiver = null;
+
+        _clipboardService?.Stop();
+        _clipboardService = null;
+        _fileTransferService = null;
 
         if (fullStop)
         {

@@ -83,6 +83,12 @@
                         </Button.Tag>
                     </Button>
 
+                    <Button Style="{StaticResource HoverIconButtonStyle}" Content="Send File" Click="SendFile_Click">
+                        <Button.Tag>
+                            <materialIcons:MaterialIcon Kind="FileUpload" Width="20" Height="20" />
+                        </Button.Tag>
+                    </Button>
+
                     <Button Style="{StaticResource HoverIconButtonStyle}" Content="Disconnect" Click="Disconnect_Click" Foreground="#FF5555">
                         <Button.Tag>
                             <materialIcons:MaterialIcon Kind="Power" Width="20" Height="20" />

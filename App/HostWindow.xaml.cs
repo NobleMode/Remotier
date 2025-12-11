@@ -183,15 +183,59 @@ namespace Remotier
             Close();
         }
 
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            if (_hostService != null)
+            {
+                var settings = new SettingWindow(_hostService);
+                settings.Owner = this;
+                settings.ShowDialog();
+            }
+        }
+
         private void CopyIp_Click(object sender, RoutedEventArgs e)
         {
             if (IpText != null) Clipboard.SetText(IpText.Text);
         }
 
-        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        private void Window_StateChanged(object sender, EventArgs e)
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                Hide();
+                TrayIcon.Visibility = Visibility.Visible;
+                TrayIcon.ShowBalloonTip("Remotier", "Minimised to Tray", Hardcodet.Wpf.TaskbarNotification.BalloonIcon.Info);
+            }
+        }
+
+        private void TrayShow_Click(object sender, RoutedEventArgs e)
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            TrayIcon.Visibility = Visibility.Collapsed;
+        }
+
+        private void TrayExit_Click(object sender, RoutedEventArgs e)
         {
             _hostService?.Stop();
+            TrayIcon.Dispose();
+            Application.Current.Shutdown();
+        }
+
+        private void TrayIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
+        {
+            TrayShow_Click(sender, e);
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            // If user clicked X, just close app for simplicity in this version, or minimalize?
+            // "Stop Hosting" button calls Close().
+            // Let's ensure proper cleanup.
+            _hostService?.Stop();
             _timer?.Stop();
+            TrayIcon.Dispose();
         }
 
         private void MonitorSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)

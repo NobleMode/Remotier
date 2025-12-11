@@ -78,20 +78,65 @@ public class TcpHost : IDisposable
                             byte[] stringBuffer = new byte[validLen];
                             await stream.ReadExactlyAsync(stringBuffer, 0, validLen);
                             string msg = System.Text.Encoding.UTF8.GetString(stringBuffer);
-
-                            // Re-use PacketType.Chat in ControlPacket for signaling event
-                            // Or better: Add a specific event for Chat? 
-                            // For simplicity, I'll invoke OnControlReceived with a dummy packet but the message is missing.
-                            // I need to update OnControlReceived signature or add OnChatReceived.
-
                             OnChatReceived?.Invoke(msg, client);
                         }
+                    }
+                    else if (type == PacketType.Clipboard)
+                    {
+                        byte[] lengthBuffer = new byte[4];
+                        await stream.ReadExactlyAsync(lengthBuffer, 0, 4);
+                        int validLen = BitConverter.ToInt32(lengthBuffer, 0);
+
+                        if (validLen > 0 && validLen < 1024 * 1024) // Limit 1MB for clipboard text
+                        {
+                            byte[] stringBuffer = new byte[validLen];
+                            await stream.ReadExactlyAsync(stringBuffer, 0, validLen);
+                            string text = System.Text.Encoding.UTF8.GetString(stringBuffer);
+                            OnClipboardReceived?.Invoke(text, client);
+                        }
+                    }
+                    else if (type == PacketType.FileStart)
+                    {
+                        // [Type][NameLength:4][Name:N][Size:8]
+                        byte[] nameLenBuffer = new byte[4];
+                        await stream.ReadExactlyAsync(nameLenBuffer, 0, 4);
+                        int nameLen = BitConverter.ToInt32(nameLenBuffer, 0);
+
+                        string fileName = "unknown";
+                        if (nameLen > 0 && nameLen < 256)
+                        {
+                            byte[] nameStats = new byte[nameLen];
+                            await stream.ReadExactlyAsync(nameStats, 0, nameLen);
+                            fileName = System.Text.Encoding.UTF8.GetString(nameStats);
+                        }
+
+                        byte[] sizeBuffer = new byte[8];
+                        await stream.ReadExactlyAsync(sizeBuffer, 0, 8);
+                        long fileSize = BitConverter.ToInt64(sizeBuffer, 0);
+
+                        OnFileStartReceived?.Invoke(fileName, fileSize, client);
+                    }
+                    else if (type == PacketType.FileChunk)
+                    {
+                        // [Type][Len:4][Data:N]
+                        byte[] lenBuffer = new byte[4];
+                        await stream.ReadExactlyAsync(lenBuffer, 0, 4);
+                        int len = BitConverter.ToInt32(lenBuffer, 0);
+
+                        if (len > 0 && len <= 1024 * 1024) // Max chunk 1MB sanity check
+                        {
+                            byte[] chunk = new byte[len];
+                            await stream.ReadExactlyAsync(chunk, 0, len);
+                            OnFileChunkReceived?.Invoke(chunk, client);
+                        }
+                    }
+                    else if (type == PacketType.FileEnd)
+                    {
+                        OnFileEndReceived?.Invoke(client);
                     }
                     else
                     {
                         // Fixed Size ControlPacket
-                        // We already read 1 byte (Type). The struct has Type as first byte.
-                        // We need to read SizeOf(ControlPacket) - 1.
                         int structSize = Marshal.SizeOf<ControlPacket>();
                         byte[] packetBuffer = new byte[structSize];
                         packetBuffer[0] = headerBuffer[0]; // Put back type
@@ -121,6 +166,10 @@ public class TcpHost : IDisposable
     }
 
     public event Action<string, TcpClient> OnChatReceived = delegate { };
+    public event Action<string, TcpClient> OnClipboardReceived = delegate { };
+    public event Action<string, long, TcpClient> OnFileStartReceived = delegate { };
+    public event Action<byte[], TcpClient> OnFileChunkReceived = delegate { };
+    public event Action<TcpClient> OnFileEndReceived = delegate { };
 
     public async Task BroadcastChat(string message)
     {
@@ -146,6 +195,68 @@ public class TcpHost : IDisposable
             Array.Copy(msgBytes, 0, data, 5, msgBytes.Length);
 
             await client.GetStream().WriteAsync(data, 0, data.Length);
+        }
+        catch { }
+    }
+
+    public async Task SendClipboardToClient(TcpClient client, string text)
+    {
+        if (client == null || !client.Connected) return;
+        try
+        {
+            byte[] msgBytes = System.Text.Encoding.UTF8.GetBytes(text);
+            byte[] lengthBytes = BitConverter.GetBytes(msgBytes.Length);
+
+            byte[] data = new byte[1 + 4 + msgBytes.Length];
+            data[0] = (byte)PacketType.Clipboard;
+            Array.Copy(lengthBytes, 0, data, 1, 4);
+            Array.Copy(msgBytes, 0, data, 5, msgBytes.Length);
+            await client.GetStream().WriteAsync(data, 0, data.Length);
+        }
+        catch { }
+    }
+
+    public async Task SendFileStartToClient(TcpClient client, string fileName, long fileSize)
+    {
+        if (client == null || !client.Connected) return;
+        try
+        {
+            byte[] nameBytes = System.Text.Encoding.UTF8.GetBytes(fileName);
+            byte[] nameLenBytes = BitConverter.GetBytes(nameBytes.Length);
+            byte[] sizeBytes = BitConverter.GetBytes(fileSize);
+
+            // [Type:1][NameLen:4][Name:N][Size:8]
+            byte[] data = new byte[1 + 4 + nameBytes.Length + 8];
+            data[0] = (byte)PacketType.FileStart;
+            Array.Copy(nameLenBytes, 0, data, 1, 4);
+            Array.Copy(nameBytes, 0, data, 5, nameBytes.Length);
+            Array.Copy(sizeBytes, 0, data, 5 + nameBytes.Length, 8);
+
+            await client.GetStream().WriteAsync(data, 0, data.Length);
+        }
+        catch { }
+    }
+
+    public async Task SendFileChunkToClient(TcpClient client, byte[] chunk)
+    {
+        if (client == null || !client.Connected) return;
+        try
+        {
+            byte[] lenBytes = BitConverter.GetBytes(chunk.Length);
+            // [Type:1][Len:4][Data:N]
+            await client.GetStream().WriteAsync(new byte[] { (byte)PacketType.FileChunk }, 0, 1);
+            await client.GetStream().WriteAsync(lenBytes, 0, 4);
+            await client.GetStream().WriteAsync(chunk, 0, chunk.Length);
+        }
+        catch { }
+    }
+
+    public async Task SendFileEndToClient(TcpClient client)
+    {
+        if (client == null || !client.Connected) return;
+        try
+        {
+            await client.GetStream().WriteAsync(new byte[] { (byte)PacketType.FileEnd }, 0, 1);
         }
         catch { }
     }
