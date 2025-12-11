@@ -74,6 +74,20 @@ UDP handling is simplified for low latency.
 *   **Assumption**: Frames < MTU? *Correction*: The current implementation sends the entire JPEG buffer in `UdpClient.SendAsync`.
     *   *Warning*: If the JPEG exceeds the MTU (~1400 bytes), IP level fragmentation occurs. Ideally, `UdpStreamSender` needs "Chunking" logic (TODO).
 
+### 3.3 Authentication Protocol
+A secure Challenge-Response handshake is performed over TCP upon connection.
+1.  **Challenge**: Host sends `AuthChallengePacket` containing a random 32-char `Salt`.
+2.  **Response**: Client computes `Hash(Hash(Password) + Salt)` and sends `AuthResponsePacket`.
+    *   **Fields**: `DeviceId`, `DeviceName`, `AccountName`, `PasswordHash`.
+    *   **Note**: `AccountName` is trimmed. `PasswordHash` is a 64-char Hex string.
+3.  **Verification**:
+    *   **Account Auth**: Host checks if `AccountName` matches trusted list. If so, uses saved credentials.
+    *   **Session Auth**: If Account mismatch, Host verifies against the temporary `SessionPassword`.
+    *   **Result**: Host sends `AuthResultPacket` (Authenticated: true/false).
+
+**Error Diagnostics**:
+Failure logs include `[InputAcc: ... HostAcc: ...]` and partial Hash comparisons `[Recv: ... Exp: ...]` to diagnose salt/password mismatches.
+
 ---
 
 ## 4. Service Internals

@@ -23,6 +23,11 @@
     -   **UPnP Support**: Automatic port forwarding for WAN access.
     -   **Auto-Discovery**: Find hosts on the local network automatically.
     -   **Jitter Buffer**: Smooths out network instability.
+    
+### 🔒 Secure Access
+-   **Enhanced Authentication**: Double-hashed password verification with per-session salts.
+-   **Pre-Connection Check**: Verifies credentials before initiating the heavy video stream.
+-   **Dynamic Settings**: Host settings (like Account passwords) apply immediately without restart.
 
 ### 🎨 Modern UI
 -   **Dark Theme**: Professional VS-style dark mode.
@@ -55,7 +60,7 @@ For deep technical details, see the documentation:
 
 ### Usage
 *   **To Host**: Click "Start Hosting". Share your IP or use Auto-Discovery.
-*   **To Connect**: Enter the Host IP (or select from Discovered list) and click "Connect".
+*   **To Connect**: Enter Host IP, Account Name (optional), and Password. Click "Connect". The app verifies credentials before launching the viewer.
 
 ## Developer Tools
 *   **Host Stats**: Visible in the Host Window (Capture Time, Encode Time).
