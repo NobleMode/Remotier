@@ -71,6 +71,10 @@ namespace Remotier
             _hostService.ClientConnected += OnClientConnected;
             _hostService.ClientDisconnected += OnClientDisconnected;
             _hostService.ChatReceived += OnChatReceived;
+            _hostService.OnCaptureTiming += (ms) => Dispatcher.Invoke(() =>
+            {
+                HostStats.Text = $"Enc: {ms:F1}ms";
+            });
 
             try
             {

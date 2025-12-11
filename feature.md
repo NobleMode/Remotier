@@ -89,14 +89,14 @@
 ## System Features
 - [ ] Wake-on-LAN support
 - [ ] Auto-start host mode on boot
-- [-] Tray minimization (Testing Needed)
+- [x] Tray minimization (Fully Supported)
 - [ ] Logging system
 - [ ] Crash reporting
 
 ---
 
 ## Developer / Debug Tools
-- [ ] Frame timing graph
-- [ ] Capture debug overlay
+- [x] Frame timing graph (F3 Key in Client)
+- [x] Capture stats overlay (Host Window)
 - [x] Network stats overlay (Basic FPS/Res)
 - [ ] Input event log

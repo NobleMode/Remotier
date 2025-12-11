@@ -28,7 +28,7 @@
 
         <tb:TaskbarIcon x:Name="TrayIcon"
                         ToolTipText="Remotier Host"
-                        IconSource="/Remotier;component/Assets/icon.ico"
+                        IconSource="/Remotier;component/Assets/remote.ico"
                         ContextMenu="{StaticResource TrayMenu}"
                         TrayMouseDoubleClick="TrayIcon_TrayMouseDoubleClick"
                         Visibility="Collapsed"/>
@@ -89,6 +89,7 @@
             <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
                  <materialIcons:MaterialIcon Kind="Wifi" Width="16" Height="16" Foreground="#AAAAAA" Margin="0,0,5,0"/>
                  <TextBlock x:Name="StatusText" Text="Waiting for connections..." FontStyle="Italic" Foreground="#AAAAAA" TextWrapping="Wrap"/>
+                 <TextBlock x:Name="HostStats" Text="" Foreground="#FFA500" Margin="10,0,0,0" FontSize="11" VerticalAlignment="Center"/>
             </StackPanel>
 
             <!-- Chat Box -->

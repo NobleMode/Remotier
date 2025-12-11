@@ -18,6 +18,7 @@ public class ClientService : IDisposable
     private FileTransferService? _fileTransferService;
 
     public event Action<BitmapImage>? OnFrameReady;
+    public event Action<double>? OnFrameTiming; // Expose timing (Decode Time)
     public event Action? Reconnecting;
     public event Action? Reconnected;
     public event Action? Disconnected;
@@ -60,6 +61,7 @@ public class ClientService : IDisposable
         {
             foreach (var data in _frameQueue.GetConsumingEnumerable(_frameProcessingCts.Token))
             {
+                var sw = Stopwatch.StartNew();
                 // Decompress
                 using var bitmap = CompressionService.Decompress(data);
                 if (bitmap != null)
@@ -72,6 +74,8 @@ public class ClientService : IDisposable
                         OnFrameReady?.Invoke(image);
                     }
                 }
+                sw.Stop();
+                OnFrameTiming?.Invoke(sw.Elapsed.TotalMilliseconds);
             }
         }
         catch (OperationCanceledException) { }

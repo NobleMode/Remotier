@@ -31,6 +31,8 @@ public class HostService : IDisposable
 
     public event Action<string>? ClientConnected;
     public event Action<string>? ClientDisconnected;
+    public event Action<double>? OnCaptureTiming; // Capture+Encode time in ms
+    public event Action<int>? OnFpsUpdate;
 
     // P/Invoke Definitions
     private static class NativeMethods
@@ -149,7 +151,10 @@ public class HostService : IDisposable
             else if (_scalePercent >= 70) jpegQuality = 75;
             else jpegQuality = 65;
 
+            var captureSw = Stopwatch.StartNew();
             int result = NativeMethods.CaptureAndEncode(_scalePercent, jpegQuality, out pData, out size);
+            captureSw.Stop();
+            OnCaptureTiming?.Invoke(captureSw.Elapsed.TotalMilliseconds);
 
             if (result == 1 && size > 0)
             {

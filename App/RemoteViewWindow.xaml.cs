@@ -101,6 +101,14 @@ public partial class RemoteViewWindow : Window
             }
         });
 
+        _clientService.OnFrameTiming += (ms) => Dispatcher.Invoke(() =>
+        {
+            if (TimingGraph.Visibility == Visibility.Visible)
+            {
+                TimingGraph.AddSample(ms);
+            }
+        });
+
         try
         {
             _clientService.ChatReceived += OnChatReceived;
@@ -270,6 +278,12 @@ public partial class RemoteViewWindow : Window
 
     private void Window_KeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F3)
+        {
+            TimingGraph.Visibility = TimingGraph.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+            return;
+        }
+
         if (!_inputEnabled) return;
         int vk = KeyInterop.VirtualKeyFromKey(e.Key);
         _clientService.SendInput(new ControlPacket
