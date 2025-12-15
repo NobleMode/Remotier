@@ -55,6 +55,13 @@ public class HostService : IDisposable
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         public static extern void Release();
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern IntPtr LoadLibrary(string lpFileName);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool FreeLibrary(IntPtr hModule);
     }
 
     public void Start(int port, StreamOptions options, int monitorIndex, int fps)
@@ -63,11 +70,29 @@ public class HostService : IDisposable
         _currentPort = port;
 
         // Initialize Native Core
-        int result = NativeMethods.Init(monitorIndex);
-        if (result != 0)
+        // Initialize Native Core
+        // Initialize Native Core
+        // Initialize Native Core
+        var check = CheckRequirements();
+        if (!check.Success)
         {
-            Debug.WriteLine($"Native Init Failed: {result}");
-            throw new Exception($"Native Init Failed: {result}");
+            // If we reached here, it means the UI check was bypassed or ignored.
+            // We throw to prevent crash, but the UI should have caught this.
+            throw new Exception(check.Error);
+        }
+
+        try
+        {
+            int result = NativeMethods.Init(monitorIndex);
+            if (result != 0)
+            {
+                throw new Exception($"Native Init Failed: {result}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Native Init Exception:\n{ex.Message}\n\nStack:\n{ex.StackTrace}", "Startup Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            throw;
         }
 
         _scalePercent = options.Quality;
@@ -470,6 +495,72 @@ public class HostService : IDisposable
                 builder.Append(bytes[i].ToString("x2"));
             }
             return builder.ToString();
+        }
+    }
+
+    public static (bool Success, string Error) CheckRequirements()
+    {
+        try
+        {
+            string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            string nativePath = System.IO.Path.Combine(baseDir, "Native.dll");
+            StringBuilder errors = new StringBuilder();
+            bool failed = false;
+
+            // 1. Check System Dependencies
+            string[] sysDeps = { "d3d11.dll", "dxgi.dll", "kernel32.dll", "ole32.dll" };
+            foreach (var dep in sysDeps)
+            {
+                IntPtr h = NativeMethods.LoadLibrary(dep);
+                if (h == IntPtr.Zero)
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    errors.AppendLine($"[X] Missing System Component: {dep} (Error: {err})");
+                    failed = true;
+                }
+                else
+                {
+                    errors.AppendLine($"[OK] System Component: {dep}");
+                    NativeMethods.FreeLibrary(h);
+                }
+            }
+
+            // 2. Check Native.dll Existence
+            if (!System.IO.File.Exists(nativePath))
+            {
+                errors.AppendLine($"[X] Native.dll missing at: {nativePath}");
+                failed = true;
+            }
+            else
+            {
+                errors.AppendLine($"[OK] Found Native.dll at: {nativePath}");
+
+                // 3. Check Loading Native.dll (catches missing CRT or other deps)
+                IntPtr handle = NativeMethods.LoadLibrary(nativePath);
+                if (handle == IntPtr.Zero)
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    errors.AppendLine($"[X] Unable to load Native.dll (Error: {err} / 0x{err:X})");
+                    errors.AppendLine("    Likely causes: Missing Visual C++ Redistributable or DirectX 11.");
+                    failed = true;
+                }
+                else
+                {
+                    errors.AppendLine($"[OK] Successfully loaded Native.dll (Dependencies satisfied)");
+                    NativeMethods.FreeLibrary(handle);
+                }
+            }
+
+            if (failed)
+            {
+                return (false, "Hosting Requirements Failed:\n\n" + errors.ToString());
+            }
+
+            return (true, "Hosting Requirements Verified:\n\n" + errors.ToString());
+        }
+        catch (Exception ex)
+        {
+            return (false, $"Check Crashed: {ex.Message}");
         }
     }
 }

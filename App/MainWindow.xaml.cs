@@ -11,6 +11,18 @@ public partial class MainWindow : Window
 
     private void Host_Click(object sender, RoutedEventArgs e)
     {
+        var check = Remotier.Services.HostService.CheckRequirements();
+        if (!check.Success)
+        {
+            MessageBox.Show(check.Error, "Requirement Check Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        else
+        {
+            // Show success details as requested
+            MessageBox.Show(check.Error, "Requirement Check Passed", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
         var hostWindow = new HostWindow();
         hostWindow.Closed += (s, args) => this.Show();
         hostWindow.Show();
